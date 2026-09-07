@@ -74,7 +74,7 @@ local function main()
   assert(vim.fn.executable(bridge_path) == 1, 'bridge is missing; run make bridge first')
   print('Creating a temporary Ghostty pane on the right. Avoid interacting with Ghostty until finished.')
   original_id = focused()
-  created_id = pane('split', original_id, '/bin/zsh -f')
+  created_id = pane('split', original_id, 'right', '/bin/zsh -f')
   assert(created_id ~= '' and created_id ~= original_id, 'Ghostty did not return a new terminal ID')
   local left, right = original_id, created_id
   pane('focus', left)
