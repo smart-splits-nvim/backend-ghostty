@@ -17,6 +17,9 @@ https://github.com/user-attachments/assets/774b72c1-acd5-48fa-9b03-406f2cc740ab
 
 ## Installation
 
+Choose one integration below, then add the [Neovim mappings](#neovim-mappings)
+and [Ghostty configuration](#ghostty-configuration). Both are required.
+
 ### smart-splits v2
 
 With lazy.nvim:
@@ -27,7 +30,7 @@ With lazy.nvim:
   lazy = false,
   dependencies = { 'smart-splits-nvim/backend-ghostty' },
   config = function()
-    require('smart-splits').setup({}) -- Your existing options and mappings.
+    require('smart-splits').setup({}) -- Your existing options.
     require('ghostty-smart-splits').setup()
   end,
 }
@@ -41,7 +44,7 @@ vim.pack.add({
   'https://github.com/smart-splits-nvim/backend-ghostty',
 })
 
-require('smart-splits').setup({}) -- Your existing options and mappings.
+require('smart-splits').setup({}) -- Your existing options.
 require('ghostty-smart-splits').setup()
 ```
 
@@ -96,6 +99,28 @@ require('smart-splits').setup({
 ```
 
 Do not call the v2 `ghostty-smart-splits` setup when using v3.
+
+## Neovim mappings
+
+Neither plugin creates mappings automatically. Add these after your plugin
+setup (after `require('lazy').setup(...)` when using lazy.nvim). They work with
+both v2 and v3 and match the Ghostty configuration below.
+
+```lua
+local splits = require('smart-splits')
+
+vim.keymap.set('n', '<C-h>', splits.move_cursor_left)
+vim.keymap.set('n', '<C-j>', splits.move_cursor_down)
+vim.keymap.set('n', '<C-k>', splits.move_cursor_up)
+vim.keymap.set('n', '<C-l>', splits.move_cursor_right)
+
+vim.keymap.set('n', '<M-h>', splits.resize_left)
+vim.keymap.set('n', '<M-j>', splits.resize_down)
+vim.keymap.set('n', '<M-k>', splits.resize_up)
+vim.keymap.set('n', '<M-l>', splits.resize_right)
+```
+
+These mappings apply in Normal mode. `<M-...>` is the Mac Option/Alt key.
 
 ## Ghostty configuration
 
@@ -175,8 +200,45 @@ Changing `key_table` to a different name while it is claimed is an error;
 release it first. Disabling the bridge stops an existing bridge immediately;
 enabling it starts one on the next attachment or action.
 
-Configure movement and resize mappings through smart-splits. The v2 setup adds
-`multiplexer_integration = 'ghostty'` and `at_edge = 'stop'`.
+The v2 setup adds `multiplexer_integration = 'ghostty'` and `at_edge = 'stop'`.
+
+### v3 edge behavior
+
+Set `move.at_edge` in smart-splits, not in the backend options:
+
+```lua
+require('smart-splits').setup({
+  mux = { backend = 'smart-splits-backend-ghostty' },
+  move = { at_edge = 'wrap' }, -- 'stop', 'wrap', or 'split'
+})
+```
+
+Movement first tries a Neovim window, then a neighboring Ghostty pane. If
+neither exists in the requested direction:
+
+| `move.at_edge` | Behavior |
+| --- | --- |
+| `'stop'` | Stay in the current Neovim window. |
+| `'wrap'` | Wrap to the opposite edge of the Neovim layout within the current Ghostty pane. With one Neovim window, stay there. Ghostty panes are not wrapped. |
+| `'split'` | Create and focus a Ghostty pane in that direction. If Ghostty cannot create it, smart-splits falls back to creating a Neovim split. |
+
+All three modes navigate to an existing Ghostty neighbor. In particular,
+`'stop'` does not prevent crossing the Neovim/Ghostty boundary. A custom
+`move.at_edge` function is handled by smart-splits after the backend cannot
+move.
+
+### Zoom and fullscreen
+
+The backend does not detect zoom/fullscreen or suppress navigation in those
+states. Movement inside Neovim still takes priority. At an editor edge,
+Ghostty handles the usual `goto_split` action. There is no
+`disable_nav_when_zoomed` backend option.
+
+On Ghostty 1.3.1, navigating to a neighbor from a zoomed pane leaves split
+zoom. Window fullscreen also allows navigation between Neovim windows and
+Ghostty panes.
+
+### Diagnostics
 
 The preferred module and health names use dashes:
 `ghostty-smart-splits` and `:checkhealth ghostty-smart-splits`. The old

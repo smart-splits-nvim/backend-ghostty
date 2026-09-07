@@ -27,6 +27,11 @@ function run(argv) {
     }).stringValue);
   }
   var term = terminal(argv[3]);
+  if (operation === 'action') {
+    return !!send(pid, 'Ghst', 'PfAc', {
+      '----': D.descriptorWithString(argv[4]), 'GonT': term
+    }).booleanValue;
+  }
   if (operation === 'split') {
     var directions = { right: 'GSrt', left: 'GSlf', down: 'GSdn', up: 'GSup' };
     var direction = directions[argv[4]];

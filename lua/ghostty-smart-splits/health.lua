@@ -9,26 +9,29 @@ function M.report()
   if vim.fn.has('macunix') == 1 then
     vim.health.ok('macOS')
   else
-    vim.health.warn('Only macOS is supported; setup() is a no-op here')
+    vim.health.warn('Only macOS is supported')
   end
   if vim.fn.executable('osascript') == 1 then
     vim.health.ok('osascript is available')
   else
     vim.health.warn('osascript is unavailable')
   end
-  local bridge = require('ghostty-smart-splits.bridge').status()
   if not require('ghostty-smart-splits.config').bridge then
     vim.health.info('bridge = false: actions use osascript')
-  elseif bridge.running then
-    vim.health.ok('bridge = true: persistent bridge is running')
-  elseif bridge.executable then
-    vim.health.info('bridge = true: binary is available; bridge is not running')
   else
-    vim.health.warn('bridge = true: binary is missing; actions fall back to osascript. Run make bridge')
+    local bridge = require('ghostty-smart-splits.bridge').status()
+    if bridge.running then
+      vim.health.ok('bridge = true: persistent bridge is running')
+    elseif bridge.executable then
+      vim.health.info('bridge = true: binary is available; bridge is not running')
+    else
+      vim.health.warn('bridge = true: binary is missing; actions fall back to osascript. Run make bridge')
+      vim.health.info('Bridge path: ' .. bridge.path)
+    end
   end
-  vim.health.info('Bridge path: ' .. bridge.path)
   if vim.env.TERM_PROGRAM == 'ghostty' then
     vim.health.ok('Running in Ghostty')
+    vim.health.info('Automation permissions: not checked')
   else
     vim.health.warn('Not running in Ghostty')
   end
@@ -40,10 +43,6 @@ function M.report()
   else
     vim.health.error('Install smart-splits-nvim/smart-splits.nvim')
   end
-  vim.health.info(
-    'Enable Ghostty AppleScript, configure the nvim key table, and allow macOS Automation access (see README)'
-  )
-  vim.health.info('Health checks do not send Apple Events or test Automation permissions')
 end
 
 function M.check()

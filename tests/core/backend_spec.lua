@@ -22,29 +22,37 @@ describe('v3 backend', function()
     assert.are.equal('activate_key_table:editor', h.last_action(state))
   end)
 
-  it('at_edge split becomes a Ghostty split and defers to core when it fails', function()
-    local state = mock()
-    local backend = require('smart-splits-backend-ghostty')
-    backend.activate()
-    h.wait_for_calls(state, 2)
-    state.responses = { ['goto_split:right'] = { code = 0, stdout = 'false' } }
+  for _, direction in ipairs({ 'left', 'right', 'up', 'down' }) do
+    it('honors at_edge and returns failed splits to core: ' .. direction, function()
+      local state = mock()
+      local backend = require('smart-splits-backend-ghostty')
+      backend.activate()
+      h.wait_for_calls(state, 2)
+      local move = 'goto_split:' .. direction
+      local split = 'new_split:' .. direction
 
-    assert.is_true(backend.move('right', { at_edge = 'split' }))
-    assert.are.equal('new_split:right', h.last_action(state))
+      -- Every mode prefers an existing neighbor and must not also split.
+      for _, mode in ipairs({ 'stop', 'wrap', 'split' }) do
+        local count = #state.calls
+        assert.is_true(backend.move(direction, { at_edge = mode }))
+        assert.are.equal(move, h.last_action(state))
+        assert.are.equal(count + 1, #state.calls)
+      end
 
-    -- A move that lands never splits.
-    assert.is_true(backend.move('left', { at_edge = 'split' }))
-    assert.are.equal('goto_split:left', h.last_action(state))
+      state.responses = { [move] = { code = 0, stdout = 'false' } }
+      local count = #state.calls
+      assert.is_false(backend.move(direction, { at_edge = 'stop' }))
+      assert.is_false(backend.move(direction, { at_edge = 'wrap' }))
+      assert.is_false(backend.move(direction))
+      assert.are.equal(count + 3, #state.calls)
 
-    -- Every other at_edge stays core's business.
-    local count = #state.calls
-    assert.is_false(backend.move('right', { at_edge = 'stop' }))
-    assert.is_false(backend.move('right', { at_edge = 'wrap' }))
-    assert.is_false(backend.move('right'))
-    assert.are.same(count + 3, #state.calls)
+      assert.is_true(backend.move(direction, { at_edge = 'split' }))
+      assert.are.equal(split, h.last_action(state))
 
-    -- Ghostty refusing the split returns the fallback to core.
-    state.responses['new_split:right'] = { code = 0, stdout = 'false' }
-    assert.is_false(backend.move('right', { at_edge = 'split' }))
-  end)
+      -- Returning false is what lets core create a Neovim split instead.
+      state.responses[split] = { code = 0, stdout = 'false' }
+      assert.is_false(backend.move(direction, { at_edge = 'split' }))
+      assert.are.equal(split, h.last_action(state))
+    end)
+  end
 end)
