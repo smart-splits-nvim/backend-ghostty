@@ -4,9 +4,9 @@
 CONTENTS                                                *ghostty-smart-splits*
 
   1. Requirements                          |ghostty-smart-splits-requirements|
-  2. Setup                                  |ghostty-smart-splits-setup|
-  3. API                                    |ghostty-smart-splits-api|
-  4. Limitations                            |ghostty-smart-splits-limitations|
+  2. Setup                                 |ghostty-smart-splits-setup|
+  3. API                                   |ghostty-smart-splits-api|
+  4. Limitations                           |ghostty-smart-splits-limitations|
 
 ==============================================================================
 1. REQUIREMENTS                           *ghostty-smart-splits-requirements*
@@ -24,7 +24,7 @@ SMART-SPLITS V2
 Configure smart-splits normally, then call setup() once at startup with the
 Neovim pane focused:
 >
-  require('smart-splits').setup({}) -- Existing options and mappings.
+  require('smart-splits').setup({}) -- Existing options.
   require('ghostty-smart-splits').setup({})
 <
 The v2 setup preserves existing smart-splits options and sets
@@ -44,6 +44,48 @@ Use smart-splits.nvim's `v3` Git ref and select the backend:
 Do not call the v2 root module's setup() with v3. Core activates the selected
 backend during setup; start Neovim with its Ghostty pane focused. The v3
 protocol may change before release.
+
+MAPPINGS
+
+Neither plugin creates mappings automatically. After your plugin setup (after
+require('lazy').setup(...) for lazy.nvim), add these Normal-mode mappings.
+They work with v2 and v3 and match examples/ghostty.conf:
+>
+  local splits = require('smart-splits')
+  vim.keymap.set('n', '<C-h>', splits.move_cursor_left)
+  vim.keymap.set('n', '<C-j>', splits.move_cursor_down)
+  vim.keymap.set('n', '<C-k>', splits.move_cursor_up)
+  vim.keymap.set('n', '<C-l>', splits.move_cursor_right)
+  vim.keymap.set('n', '<M-h>', splits.resize_left)
+  vim.keymap.set('n', '<M-j>', splits.resize_down)
+  vim.keymap.set('n', '<M-k>', splits.resize_up)
+  vim.keymap.set('n', '<M-l>', splits.resize_right)
+<
+<M-...> is the Mac Option/Alt key. Configure Ghostty's matching key table too.
+
+V3 EDGE BEHAVIOR                             *ghostty-smart-splits-at-edge*
+
+Configure move.at_edge in smart-splits, not in the backend options. Movement
+first tries a Neovim window, then a neighboring Ghostty pane. Only when neither
+exists in the requested direction does the edge setting apply:
+
+  stop     Stay in the current Neovim window.
+  wrap     Wrap to the opposite edge of the Neovim layout in this Ghostty
+           pane. With one Neovim window, stay there. No Ghostty pane wrapping.
+  split    Create and focus a Ghostty pane in that direction. If Ghostty
+           cannot create it, core falls back to creating a Neovim split.
+
+All three modes navigate to existing Ghostty neighbors. In particular, stop
+does not disable crossing the Neovim/Ghostty boundary. Custom move.at_edge
+functions are handled by smart-splits when the backend cannot move.
+
+ZOOM AND FULLSCREEN                         *ghostty-smart-splits-zoom*
+
+The backend does not detect zoom/fullscreen or suppress navigation in those
+states. Neovim windows still take priority; at an editor edge, Ghostty handles
+the usual goto_split action. There is no disable_nav_when_zoomed option.
+On Ghostty 1.3.1, moving to a neighboring pane leaves split zoom. Window
+fullscreen allows navigation inside Neovim and across Ghostty panes.
 
 CONFIGURATION
 
@@ -103,17 +145,18 @@ three Ghostty requests. All three take the bridge when it is enabled.
 require('ghostty-smart-splits').claim_keys()
     Push the configured Ghostty key table if it is not already claimed.
 
-require('ghostty-smart-splits.config').reset()
-    Restore every option to its default. setup() merges rather than
-    replaces, so this is the only way back to the defaults.
-
 require('ghostty-smart-splits').release_keys()
     Pop the table claimed by this instance. Keys are also released on
     VimSuspend and VimLeavePre, and claimed again on VimEnter and VimResume.
 
+require('ghostty-smart-splits.config').reset()
+    Restore every option to its default. setup() merges rather than
+    replaces, so this is the only way back to the defaults.
+
 :checkhealth ghostty-smart-splits
-    Check local prerequisites, bridge preference, binary path, and running
-    status without starting the bridge. With v3, :checkhealth smart-splits
+    Check local prerequisites, bridge preference, and running status without
+    starting the bridge. Show the binary path when an enabled bridge is
+    missing. With v3, :checkhealth smart-splits
     also includes backend diagnostics.
 
 The underscore names ghostty_smart_splits and ghostty_smart_splits.health

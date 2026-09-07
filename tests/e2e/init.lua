@@ -20,7 +20,11 @@ else
   require('ghostty-smart-splits').setup(opts)
 end
 for key, direction in pairs({ h = 'left', j = 'down', k = 'up', l = 'right' }) do
-  vim.keymap.set('n', '<C-' .. key .. '>', splits['move_cursor_' .. direction])
+  vim.keymap.set('n', '<C-' .. key .. '>', function()
+    splits['move_cursor_' .. direction]()
+    -- A stop assertion must wait until its key has actually been handled.
+    vim.g.e2e_moves = (vim.g.e2e_moves or 0) + 1
+  end)
   vim.keymap.set('n', '<M-' .. key .. '>', splits['resize_' .. direction])
 end
 vim.keymap.set('n', '<F12>', function()

@@ -37,7 +37,6 @@ end
 
 function M.health()
   require('ghostty-smart-splits.health').report()
-  vim.health.info('Ghostty pane wrapping and zoom detection are not implemented; failed moves use the core fallback')
 end
 
 return M

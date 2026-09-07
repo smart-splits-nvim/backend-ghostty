@@ -113,6 +113,74 @@ local function select_window(win)
   command(('lua vim.api.nvim_set_current_win(%d)'):format(win))
 end
 
+local function set_at_edge(mode)
+  command(
+    ("lua require('smart-splits').setup({ mux = { backend = 'smart-splits-backend-ghostty' }, move = { at_edge = %q } })"):format(
+      mode
+    )
+  )
+end
+
+local function move_at_edge(direction)
+  local before = remote('vim.g.e2e_moves or 0')
+  key(editor, direction.key, 'control')
+  wait_for('movement key did not finish', function()
+    return remote('vim.g.e2e_moves or 0') > before
+  end)
+end
+
+-- With only one Ghostty pane, every editor edge is also an outer mux edge.
+local function test_edges()
+  local windows = editor_layout()
+  for _, mode in ipairs({ 'stop', 'wrap', 'split' }) do
+    set_at_edge(mode)
+    for _, direction in ipairs(directions) do
+      select_window(windows[direction.edge])
+      move_at_edge(direction)
+      if mode == 'split' then
+        local created
+        check('at_edge=split creates a Ghostty pane ' .. direction.name, function()
+          created = ghostty('focused')
+          return created ~= editor and remote('#vim.api.nvim_list_wins()') == 4
+        end)
+        -- Moving in the opposite direction from the new pane must return to
+        -- the editor, also checking that it was created on the requested side.
+        key(created, direction.opposite, 'control')
+        check('new ' .. direction.name .. ' pane returns to Neovim', function()
+          return ghostty('focused') == editor
+        end)
+        ghostty('close', created)
+      else
+        local expected = windows[mode == 'stop' and direction.edge or direction.start]
+        check(('at_edge=%s at the outer %s edge'):format(mode, direction.name), function()
+          return remote('vim.api.nvim_get_current_win()') == expected
+            and remote('#vim.api.nvim_list_wins()') == 4
+            and ghostty('focused') == editor
+        end)
+      end
+    end
+  end
+  set_at_edge('stop')
+end
+
+local function test_zoom(direction, windows)
+  select_window(windows[direction.edge])
+  local width = remote('vim.o.columns')
+  local height = remote('vim.o.lines')
+  assert(ghostty('action', editor, 'toggle_split_zoom') == 'true', 'Ghostty refused split zoom')
+  wait_for('Ghostty did not zoom the editor pane', function()
+    return remote('vim.o.columns') > width and remote('vim.o.lines') > height
+  end)
+  move_at_edge(direction)
+  check('zoomed navigation focuses the ' .. direction.name .. ' Ghostty pane', function()
+    return ghostty('focused') == neighbors[direction.name]
+  end)
+  key(neighbors[direction.name], direction.opposite, 'control')
+  check('returning from ' .. direction.name .. ' restores the unzoomed editor', function()
+    return ghostty('focused') == editor and remote('vim.o.columns') == width and remote('vim.o.lines') == height
+  end)
+end
+
 local function test_navigation(direction, windows)
   local start = windows[direction.start]
   local edge = windows[direction.edge]
@@ -147,6 +215,23 @@ local function test_nvim_resize(direction, windows)
   key(editor, direction.key, 'option')
   check(('Alt-%s resizes the Neovim split %s'):format(direction.key:upper(), direction.name), function()
     return window_size(direction) > size
+  end)
+end
+
+local function test_fullscreen(windows)
+  local width = remote('vim.o.columns')
+  local height = remote('vim.o.lines')
+  assert(ghostty('action', editor, 'toggle_fullscreen') == 'true', 'Ghostty refused fullscreen')
+  wait_for('Ghostty did not enter fullscreen', function()
+    return remote('vim.o.columns') ~= width or remote('vim.o.lines') ~= height
+  end)
+  report('  Fullscreen navigation')
+  for _, direction in ipairs(directions) do
+    test_navigation(direction, windows)
+  end
+  assert(ghostty('action', editor, 'toggle_fullscreen') == 'true', 'Ghostty refused to leave fullscreen')
+  check('leaving fullscreen restores the editor dimensions', function()
+    return remote('vim.o.columns') == width and remote('vim.o.lines') == height
   end)
 end
 
@@ -205,6 +290,9 @@ local function scenario(version, bridge, checkout)
   -- running while the UI is suspended. Observe the process that owns the TTY.
   local nvim_pid = remote('vim.fn.getpid()')
   local pid = run({ 'ps', '-o', 'ppid=', '-p', tostring(nvim_pid) })
+  if version == 'v3' then
+    test_edges()
+  end
   local full_width = remote('vim.o.columns')
   local full_height = remote('vim.o.lines')
   neighbors = {}
@@ -223,6 +311,20 @@ local function scenario(version, bridge, checkout)
   local windows = editor_layout()
   for _, direction in ipairs(directions) do
     test_navigation(direction, windows)
+  end
+  if version == 'v3' then
+    for _, direction in ipairs(directions) do
+      test_zoom(direction, windows)
+    end
+    -- All modes must still prefer a neighbor over wrapping/splitting locally.
+    for _, mode in ipairs({ 'wrap', 'split' }) do
+      set_at_edge(mode)
+      for _, direction in ipairs(directions) do
+        test_navigation(direction, windows)
+      end
+    end
+    set_at_edge('stop')
+    test_fullscreen(windows)
   end
   for _, direction in ipairs(directions) do
     test_nvim_resize(direction, windows)

@@ -21,7 +21,7 @@ Run the fast checks from the repository root:
 make check
 ```
 
-This runs formatting, LuaLS, Luacheck, and 25 focused tests in Neovim. Use
+This runs formatting, LuaLS, Luacheck, and the focused tests in Neovim. Use
 `make format`, `make lint`, `make typecheck`, or `make test` individually.
 Pass Busted options with `BUSTED_ARGS`, for example:
 `make test BUSTED_ARGS='--filter=bridge'`.
@@ -41,6 +41,10 @@ The harness launches a separate Ghostty process with
 Neovim and Ghostty through smart-splits v2 and v3, using both osascript and the
 persistent bridge. It checks split movement, shell movement, resizing,
 `Ctrl-Z`/`fg`, key-table lifecycle, and navigation after Neovim exits.
+The v3 sessions also check all three `move.at_edge` modes at the outer edge
+and with existing neighbors, directional pane creation, navigation out of
+split zoom, and navigation in native macOS fullscreen. Each direction is
+tested with both transports. Fullscreen tests temporarily switch macOS Spaces.
 
 Bridge sessions verify a real bridge child process and reject any osascript
 fallback after initial attachment. The upstream v2/v3 checkouts are downloaded
