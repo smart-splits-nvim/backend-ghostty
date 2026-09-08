@@ -4,6 +4,19 @@ local mock = h.mock
 describe('v3 backend', function()
   after_each(h.restore)
 
+  describe('protocol conformance', function()
+    local backend = require('smart-splits-backend-ghostty')
+    local protocol_tests = require('smart-splits.protocol_tests')
+    for _, test in ipairs(protocol_tests.tests(backend)) do
+      it(test.name, function()
+        local result = test.fn()
+        if result ~= true then
+          error(result)
+        end
+      end)
+    end
+  end)
+
   it('configuration and detection have no side effects', function()
     local state = mock()
     local backend = require('smart-splits-backend-ghostty')

@@ -62,9 +62,9 @@ typecheck:
 
 test: test-core
 
-test-core:
+test-core: $(SMART_SPLITS_V3_DIR)
 	@$(LOAD_LUAJIT_ROCKS) \
-	SMART_SPLITS_DIR= XDG_STATE_HOME=$(TEST_STATE_HOME) $(BUSTED) --run=core $(BUSTED_ARGS) < /dev/null
+	SMART_SPLITS_DIR="$(abspath $(SMART_SPLITS_V3_DIR))" XDG_STATE_HOME=$(TEST_STATE_HOME) $(BUSTED) --run=core $(BUSTED_ARGS) < /dev/null
 
 $(SMART_SPLITS_DIR):
 	mkdir -p "$(dir $(SMART_SPLITS_DIR))"
