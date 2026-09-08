@@ -159,9 +159,6 @@ require('ghostty-smart-splits.config').reset()
     missing. With v3, :checkhealth smart-splits
     also includes backend diagnostics.
 
-The underscore names ghostty_smart_splits and ghostty_smart_splits.health
-remain deprecated aliases for the dashed module and health names.
-
 ==============================================================================
 4. LIMITATIONS                            *ghostty-smart-splits-limitations*
 

@@ -238,10 +238,6 @@ Ghostty panes.
 
 ### Diagnostics
 
-The preferred module and health names use dashes:
-`ghostty-smart-splits` and `:checkhealth ghostty-smart-splits`. The old
-underscore names remain as deprecated aliases for now.
-
 In local measurements, bridge actions took about 15 ms versus about 110 ms
 through per-call `osascript`; results vary by machine.
 
