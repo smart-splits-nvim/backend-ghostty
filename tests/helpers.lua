@@ -29,12 +29,6 @@ local function reset_plugin()
   for _, name in ipairs(OWN_MODULES) do
     require(name).reset()
   end
-  -- `setup()` is what copies the threshold onto the v3 backend, so resetting
-  -- config alone would leave a stale value behind.
-  local backend = package.loaded['smart-splits-backend-ghostty']
-  if backend then
-    backend.slow_threshold = require('ghostty-smart-splits.config').slow_threshold
-  end
 end
 
 ---Install the Ghostty test double and return its recording state. Every
