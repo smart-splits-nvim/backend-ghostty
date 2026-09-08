@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.5.0...v0.5.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* remove slow_threshold from the protocol ([#33](https://github.com/smart-splits-nvim/backend-ghostty/issues/33)) ([78be406](https://github.com/smart-splits-nvim/backend-ghostty/commit/78be406111bfe7a9beeaa93537e5716efee913c7))
+
 ## [0.5.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.4.1...v0.5.0) (2026-09-07)
 
 
