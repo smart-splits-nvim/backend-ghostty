@@ -3,34 +3,23 @@
 ---@class GhosttySmartSplitsConfigModule
 ---@field key_table string Ghostty key table used while Neovim is active.
 ---@field bridge boolean Whether actions and pane lookups prefer the bridge.
----@field slow_threshold integer Effective v3 slow-operation threshold, in ms.
 local M = {}
-
-local BRIDGE_SLOW_MS = 100
-local OSASCRIPT_SLOW_MS = 150
 
 ---@class GhosttySmartSplitsConfig
 ---@field key_table? string Name of the Ghostty key table used while Neovim is active.
 ---@field bridge? boolean Prefer the persistent bridge for actions and pane lookups (default false).
----@field slow_threshold? integer Milliseconds before v3 logs a slow-operation warning (default 100 with the bridge, 150 without).
 
 local defaults = {
   key_table = 'nvim',
   bridge = false,
 }
 
----slow_threshold is absent from `defaults` on purpose: it follows `bridge`
----until someone sets it, so there is no fixed value to store. Listing it here
----is what still makes it a known key.
 local validators = {
   key_table = function(value)
     return type(value) == 'string' and value ~= '', 'key_table must be a non-empty string'
   end,
   bridge = function(value)
     return type(value) == 'boolean', 'bridge must be a boolean'
-  end,
-  slow_threshold = function(value)
-    return type(value) == 'number' and value > 0 and value % 1 == 0, 'slow_threshold must be a positive integer'
   end,
 }
 
@@ -80,9 +69,6 @@ end
 
 setmetatable(M, {
   __index = function(_, key)
-    if key == 'slow_threshold' then
-      return options.slow_threshold or (options.bridge and BRIDGE_SLOW_MS or OSASCRIPT_SLOW_MS)
-    end
     return options[key]
   end,
 })

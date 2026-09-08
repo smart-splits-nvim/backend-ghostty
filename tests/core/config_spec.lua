@@ -39,49 +39,19 @@ describe('config', function()
     assert.is_false(config.bridge)
   end)
 
-  it('slow threshold follows the transport and accepts a positive integer override', function()
-    assert.are.equal(150, config.slow_threshold)
-    config.setup({ bridge = true })
-    assert.are.equal(100, config.slow_threshold)
-    config.setup({ bridge = false })
-    assert.are.equal(150, config.slow_threshold)
-    config.setup({ slow_threshold = 200 })
-    assert.are.equal(200, config.slow_threshold)
-    config.setup({ bridge = true })
-    assert.are.equal(200, config.slow_threshold)
-    config.reset()
-    assert.are.equal(150, config.slow_threshold)
-  end)
-
-  it('rejects invalid slow thresholds without changing config', function()
-    config.setup({ bridge = true, key_table = 'editor', slow_threshold = 200 })
-    for _, value in ipairs({ 0, -1, 1.5, '200', false, {} }) do
-      ---@diagnostic disable-next-line: assign-type-mismatch
-      local ok, message = pcall(config.setup, { slow_threshold = value })
-      assert.is_false(ok)
-      assert(tostring(message):find('slow_threshold must be a positive integer', 1, true))
-      assert.is_true(config.bridge)
-      assert.are.equal('editor', config.key_table)
-      assert.are.equal(200, config.slow_threshold)
-    end
-  end)
-
   it('setup merges over the current options and reset restores defaults', function()
-    config.setup({ key_table = 'editor', bridge = true, slow_threshold = 200 })
+    config.setup({ key_table = 'editor', bridge = true })
 
     -- Naming one option leaves the rest alone, however many calls it takes.
     config.setup({ bridge = false })
     assert.is_false(config.bridge)
     assert.are.equal('editor', config.key_table)
-    assert.are.equal(200, config.slow_threshold)
     config.setup()
     assert.are.equal('editor', config.key_table)
-    assert.are.equal(200, config.slow_threshold)
 
     config.reset()
     assert.are.equal('nvim', config.key_table)
     assert.is_false(config.bridge)
-    assert.are.equal(150, config.slow_threshold)
 
     -- An explicit value still wins, and an invalid one is still rejected.
     config.setup({ key_table = 'other' })
@@ -95,7 +65,7 @@ describe('config', function()
 
   it('unknown options are rejected instead of silently dropped', function()
     config.setup({ key_table = 'editor' })
-    for _, opts in ipairs({ { bridge_enabled = true }, { keytable = 'x' }, { slowThreshold = 200 } }) do
+    for _, opts in ipairs({ { bridge_enabled = true }, { keytable = 'x' } }) do
       local ok, message = pcall(config.setup, opts)
       assert.is_false(ok)
       assert(tostring(message):find('unknown option', 1, true))

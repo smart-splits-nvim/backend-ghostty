@@ -166,7 +166,6 @@ Both integrations accept the same backend options:
 | --- | --- | --- |
 | `key_table` | `'nvim'` | Ghostty key table used while Neovim is active. |
 | `bridge` | `false` | Use a persistent bridge for actions and pane lookups; fall back to `osascript` when unavailable. Set `false` to use only `osascript`. |
-| `slow_threshold` | `100` with the bridge, `150` without | Milliseconds before smart-splits v3 logs a slow-operation warning. Must be a positive integer. Follows `bridge` until you set it. |
 
 With v2, pass them to the plugin setup:
 
@@ -183,7 +182,6 @@ With v3, configure the backend **before** smart-splits selects and activates it:
 require('smart-splits-backend-ghostty').setup({
   key_table = 'nvim',
   bridge = false, -- If navigation feels slow, build the bridge and set true.
-  -- slow_threshold = 200,
 })
 require('smart-splits').setup({
   mux = { backend = 'smart-splits-backend-ghostty' },
@@ -246,9 +244,6 @@ underscore names remain as deprecated aliases for now.
 
 In local measurements, bridge actions took about 15 ms versus about 110 ms
 through per-call `osascript`; results vary by machine.
-The v3 warning threshold is therefore raised to 150 ms when the bridge is off.
-If your machine is slower and you are comfortable with the latency, increase
-`slow_threshold` to suppress expected warnings.
 
 ### Optional bridge
 
