@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.7.0...v0.8.0) (2026-09-11)
+
+
+### Features
+
+* support cmux alongside Ghostty ([#43](https://github.com/smart-splits-nvim/backend-ghostty/issues/43)) ([d430a82](https://github.com/smart-splits-nvim/backend-ghostty/commit/d430a8205c78a4c6f1e68dcbdc0a6d66691a92c0))
+
 ## [0.7.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.6.0...v0.7.0) (2026-09-11)
 
 
