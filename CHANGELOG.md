@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.5.1...v0.6.0) (2026-09-11)
+
+
+### Features
+
+* **nix:** Provide a nix package for the Swift bridge binary ([#38](https://github.com/smart-splits-nvim/backend-ghostty/issues/38)) ([2aa5eea](https://github.com/smart-splits-nvim/backend-ghostty/commit/2aa5eea50fc6bc7b6a75720f7c73800ff4eb47d0))
+
 ## [0.5.1](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.5.0...v0.5.1) (2026-09-08)
 
 
