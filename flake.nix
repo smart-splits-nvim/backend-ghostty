@@ -3,20 +3,29 @@
     nixpkgs = {
       url = "github:nixos/nixpkgs/nixos-unstable";
     };
+    # Neovim 0.11.x
+    nixpkgs-neovim-0_11 = {
+      url = "github:nixos/nixpkgs/nixos-25.11";
+    };
     flake-utils = {
       url = "github:numtide/flake-utils";
     };
+    neovim-nightly-overlay = {
+      url = "github:nix-community/neovim-nightly-overlay";
+    };
   };
   outputs =
-    { nixpkgs, flake-utils, ... }:
+    {
+      nixpkgs,
+      nixpkgs-neovim-0_11,
+      flake-utils,
+      neovim-nightly-overlay,
+      ...
+    }:
     flake-utils.lib.eachDefaultSystem (
       system:
       let
         pkgs = import nixpkgs { inherit system; };
-        nlua = pkgs.writeShellScriptBin "nlua" ''
-          exec ${pkgs.neovim}/bin/nvim -u NONE -U NONE -N -i NONE \
-            -l ${pkgs.lua51Packages.nlua}/bin/nlua "$@"
-        '';
         packages =
           (with pkgs; [
             git
@@ -26,10 +35,30 @@
             just
             neovim
             lua-language-server
+            lua51Packages.nlua
             lua51Packages.busted
           ])
-          ++ [ nlua ]
           ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.swift ];
+        # Tests run inside nvim, which loads native Lua modules (e.g. busted's luasystem), so nlua
+        # and busted must come from the nixpkgs that built this Neovim and share its glibc.
+        testShell =
+          name: neovim:
+          let
+            luaPkgs = neovim.lua.pkgs;
+            nlua = pkgs.writeShellScriptBin "nlua" ''
+              exec ${neovim}/bin/nvim -u NONE -U NONE -N -i NONE -l ${luaPkgs.nlua}/bin/nlua "$@"
+            '';
+          in
+          pkgs.mkShell {
+            inherit name;
+            packages = [
+              pkgs.git
+              pkgs.just
+              neovim
+              nlua
+              luaPkgs.busted
+            ];
+          };
       in
       {
         devShells.default = pkgs.mkShell {
@@ -40,6 +69,11 @@
           name = "ci";
           inherit packages;
         };
+        devShells.ci-0_11 =
+          testShell "ci-0_11"
+            nixpkgs-neovim-0_11.legacyPackages.${system}.neovim-unwrapped;
+        # The overlay's CI pushes `checks` (not `packages`) to nix-community.cachix.org.
+        devShells.ci-nightly = testShell "ci-nightly" neovim-nightly-overlay.checks.${system}.neovim;
       }
     );
 }

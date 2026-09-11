@@ -63,44 +63,45 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        neovim: [v0.11.0, stable, nightly]
+        neovim: ['0.11', stable, nightly]
+        include:
+          - neovim: '0.11'
+            devshell: ci-0_11
+          - neovim: stable
+            devshell: ci
+          - neovim: nightly
+            devshell: ci-nightly
     steps:
       - uses: actions/checkout@v7
 
       - name: Install Nix
-        if: matrix.neovim == 'stable'
         uses: cachix/install-nix-action@v31
-
-      - uses: leafo/gh-actions-lua@v13
-        if: matrix.neovim != 'stable'
         with:
-          luaVersion: '5.1.5'
+          extra_nix_config: |
+            extra-substituters = https://nix-community.cachix.org
+            extra-trusted-public-keys = nix-community.cachix.org-1:mB9FSh9qf2dCimDSUo8Zy7bkq5CX+/rkCWyvRCYg3Fs=
 
-      - uses: leafo/gh-actions-luarocks@v6
-        if: matrix.neovim != 'stable'
+      - name: Update Neovim nightly
+        if: matrix.neovim == 'nightly'
+        run: nix flake update neovim-nightly-overlay
 
-      - name: Install busted
-        if: matrix.neovim != 'stable'
+      - name: Check Neovim version
         run: |
-          luarocks install busted 2.3.0
-          luarocks install nlua 0.3.2
-
-      - uses: extractions/setup-just@v4
-        if: matrix.neovim != 'stable'
-
-      - uses: rhysd/action-setup-vim@v1
-        if: matrix.neovim != 'stable'
-        with:
-          neovim: true
-          version: ${{ matrix.neovim }}
-
-      - name: Run tests
-        if: matrix.neovim == 'stable'
-        run: nix develop .#ci --command just test
+          nix develop .#${{ matrix.devshell }} --command nlua -e '
+            local v, want = vim.version(), "${{ matrix.neovim }}"
+            print("Neovim " .. tostring(v))
+            if want == "nightly" then
+              assert(v.prerelease, "expected a Neovim prerelease")
+            elseif want == "stable" then
+              assert(not v.prerelease, "expected a Neovim release")
+            else
+              local got = ("%d.%d"):format(v.major, v.minor)
+              assert(got == want and not v.prerelease, "expected Neovim " .. want)
+            end
+          ' < /dev/null
 
       - name: Run tests
-        if: matrix.neovim != 'stable'
-        run: just test
+        run: nix develop .#${{ matrix.devshell }} --command just test
 
   release:
     name: Prepare or publish release

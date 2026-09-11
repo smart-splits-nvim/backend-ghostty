@@ -23,6 +23,18 @@ This runs formatting, LuaLS, Selene, and the focused tests in Neovim. Use
 Pass Busted options through the environment, for example:
 `BUSTED_ARGS='--filter=bridge' just test`.
 
+CI also runs the tests against Neovim 0.11 and nightly with the `ci-0_11`
+and `ci-nightly` shells, for example:
+
+```sh
+nix develop .#ci-nightly --command just test
+```
+
+The nightly build comes from the
+[nix-community binary cache](https://nix-community.org/cache/); without that
+cache configured, Nix compiles Neovim from source. CI runs
+`nix flake update neovim-nightly-overlay` first to test the latest nightly.
+
 ## Real Ghostty tests
 
 These require a logged-in macOS desktop, Ghostty 1.3 or newer at
