@@ -22,58 +22,83 @@
       neovim-nightly-overlay,
       ...
     }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-        packages =
-          (with pkgs; [
-            git
-            gnumake
-            stylua
-            selene
-            just
-            neovim
-            lua-language-server
-            lua51Packages.nlua
-            lua51Packages.busted
-          ])
-          ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.swift ];
-        # Tests run inside nvim, which loads native Lua modules (e.g. busted's luasystem), so nlua
-        # and busted must come from the nixpkgs that built this Neovim and share its glibc.
-        testShell =
-          name: neovim:
-          let
-            luaPkgs = neovim.lua.pkgs;
-            nlua = pkgs.writeShellScriptBin "nlua" ''
-              exec ${neovim}/bin/nvim -u NONE -U NONE -N -i NONE -l ${luaPkgs.nlua}/bin/nlua "$@"
-            '';
-          in
-          pkgs.mkShell {
-            inherit name;
-            packages = [
-              pkgs.git
-              pkgs.just
+    flake-utils.lib.eachSystem
+      [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ]
+      (
+        system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+          packages =
+            (with pkgs; [
+              git
+              gnumake
+              stylua
+              selene
+              just
               neovim
-              nlua
-              luaPkgs.busted
-            ];
+              lua-language-server
+              lua51Packages.nlua
+              lua51Packages.busted
+            ])
+            ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.swift ];
+          # Tests run inside nvim, which loads native Lua modules (e.g. busted's luasystem), so nlua
+          # and busted must come from the nixpkgs that built this Neovim and share its glibc.
+          testShell =
+            name: neovim:
+            let
+              luaPkgs = neovim.lua.pkgs;
+              nlua = pkgs.writeShellScriptBin "nlua" ''
+                exec ${neovim}/bin/nvim -u NONE -U NONE -N -i NONE -l ${luaPkgs.nlua}/bin/nlua "$@"
+              '';
+            in
+            pkgs.mkShell {
+              inherit name;
+              packages = [
+                pkgs.git
+                pkgs.just
+                neovim
+                nlua
+                luaPkgs.busted
+              ];
+            };
+        in
+        {
+          devShells.default = pkgs.mkShell {
+            name = "backend-ghostty";
+            inherit packages;
           };
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          name = "backend-ghostty";
-          inherit packages;
-        };
-        devShells.ci = pkgs.mkShell {
-          name = "ci";
-          inherit packages;
-        };
-        devShells.ci-0_11 =
-          testShell "ci-0_11"
-            nixpkgs-neovim-0_11.legacyPackages.${system}.neovim-unwrapped;
-        # The overlay's CI pushes `checks` (not `packages`) to nix-community.cachix.org.
-        devShells.ci-nightly = testShell "ci-nightly" neovim-nightly-overlay.checks.${system}.neovim;
-      }
-    );
+          devShells.ci = pkgs.mkShell {
+            name = "ci";
+            inherit packages;
+          };
+          devShells.ci-0_11 =
+            testShell "ci-0_11"
+              nixpkgs-neovim-0_11.legacyPackages.${system}.neovim-unwrapped;
+          # The overlay's CI pushes `checks` (not `packages`) to nix-community.cachix.org.
+          devShells.ci-nightly = testShell "ci-nightly" neovim-nightly-overlay.checks.${system}.neovim;
+        }
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
+          packages.default = pkgs.stdenv.mkDerivation {
+            pname = "ghostty-smart-splits-bridge";
+            version = "0.1.0";
+            src = ./.;
+            nativeBuildInputs = [
+              pkgs.swift
+              pkgs.gnumake
+            ];
+            buildPhase = ''
+              make bridge
+            '';
+            installPhase = ''
+              mkdir -p $out/bin $out/scripts
+              install -m755 bin/ghostty-smart-splits-bridge $out/bin/
+              install -m644 scripts/ghostty.js $out/scripts/
+            '';
+          };
+        }
+      );
 }
