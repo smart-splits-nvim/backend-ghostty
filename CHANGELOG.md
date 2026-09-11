@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.6.0...v0.7.0) (2026-09-11)
+
+
+### Features
+
+* replace the Swift bridge with a persistent osascript transport ([#40](https://github.com/smart-splits-nvim/backend-ghostty/issues/40)) ([0bf1122](https://github.com/smart-splits-nvim/backend-ghostty/commit/0bf1122440d2e2024fa5e966c31af74b7c11f262))
+
 ## [0.6.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.5.1...v0.6.0) (2026-09-11)
 
 
