@@ -78,11 +78,15 @@ leave that disposable window open.
 
 ## Automation and transports
 
-Both transports run [`scripts/ghostty.js`](scripts/ghostty.js) and address the
-Ghostty process owning the current Neovim instance. The ephemeral transport
-runs one command per osascript process; the persistent transport keeps the
-script running with `serve` and reads newline-delimited JSON requests from
-stdin. Syntax-check the scripts with:
+Both transports run [`scripts/ghostty.js`](scripts/ghostty.js) and address the Ghostty or cmux process owning
+the current Neovim instance.
+
+cmux mirrors Ghostty's scripting dictionary under its own four-character codes so he script
+keeps one code table per app.
+
+The ephemeral transport runs one command per osascript process and the persistent transport
+keeps the script running with `serve` and reads newline-delimited JSON requests from stdin.
+Syntax-check the scripts with:
 
 ```sh
 tmpdir="$(mktemp -d)"

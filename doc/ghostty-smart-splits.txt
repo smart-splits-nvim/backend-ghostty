@@ -11,10 +11,17 @@ CONTENTS                                                *ghostty-smart-splits*
 ==============================================================================
 1. REQUIREMENTS                           *ghostty-smart-splits-requirements*
 
-Neovim 0.11+, smart-splits.nvim, Ghostty 1.3+ on macOS, and macOS Automation
-permission. Run Neovim locally inside Ghostty. Configure Ghostty's nvim key
-table before starting Neovim; the ready-to-copy configuration is in
-examples/ghostty.conf.
+Neovim 0.11+, smart-splits.nvim, Ghostty 1.3+ or cmux on macOS, and macOS
+Automation permission. Run Neovim locally inside Ghostty or cmux. Configure
+Ghostty's nvim key table before starting Neovim; the ready-to-copy
+configuration is in examples/ghostty.conf.
+
+cmux embeds Ghostty and reads the same Ghostty config file, so the same
+configuration applies; run `cmux reload-config` after editing it.
+cmux reports `goto_split` as performed even when no pane lies in that direction,
+so a move counts as successful only once focus has left the Neovim pane.
+That costs one extra pane lookup per move in cmux; Ghostty answers accurately
+and skips it.
 
 ==============================================================================
 2. SETUP                                         *ghostty-smart-splits-setup*
