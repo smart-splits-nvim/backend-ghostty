@@ -247,8 +247,9 @@ The bridge is a persistent Swift process that reuses JavaScript for Automation h
 Both transports address the Ghostty process that owns Neovim, so separate Ghostty instances can run alongside each other.
 Every request goes through the bridge when enabled, including the pane lookups smart-splits v2 makes before and after each move.
 
-If navigation feels slow, try enabling the bridge. With Xcode Command Line Tools installed,
-run this from the plugin directory, then set `bridge = true`:
+If navigation feels slow, try enabling the bridge. With
+Xcode Command Line Tools installed, run this from the plugin directory, then
+set `bridge = true`:
 
 ```sh
 make bridge
@@ -275,7 +276,7 @@ vim.api.nvim_create_autocmd('PackChanged', {
 })
 ```
 
-Run `make bench` to benchmark locally.
+Run `just bench` from the Nix development shell to benchmark locally.
 
 ## How it works
 
