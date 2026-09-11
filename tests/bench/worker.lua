@@ -1,7 +1,6 @@
 -- Runs inside the isolated Ghostty launched by tests/bench/run.lua.
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
 local bench = dofile(root .. '/tests/bench/init.lua')
-local bridge_path = root .. '/bin/ghostty-smart-splits-bridge'
 local worker
 local original_id, created_id
 local timeout = 5000
@@ -36,7 +35,7 @@ end
 
 local function start_worker()
   local buffer, stderr, exited, read_error = '', '', false, nil
-  worker = vim.system({ bridge_path }, {
+  worker = vim.system({ 'osascript', '-l', 'JavaScript', root .. '/scripts/ghostty.js', 'serve' }, {
     stdin = true,
     stdout = function(err, data)
       read_error = read_error or err
@@ -49,21 +48,21 @@ local function start_worker()
     exited = true
   end)
   return function(id, action)
-    assert(not exited, 'bridge exited: ' .. stderr)
+    assert(not exited, 'persistent process exited: ' .. stderr)
     worker:write(vim.json.encode({ command = 'perform', terminalID = id, action = action }) .. '\n')
     local completed = vim.wait(timeout, function()
       return buffer:find('\n', 1, true) ~= nil or exited or read_error ~= nil
     end, 1)
-    assert(completed, 'bridge timed out; action outcome is unknown')
+    assert(completed, 'persistent process timed out; action outcome is unknown')
     assert(not read_error, read_error)
     local newline = buffer:find('\n', 1, true)
-    assert(newline, 'bridge exited before replying: ' .. stderr)
+    assert(newline, 'persistent process exited before replying: ' .. stderr)
     local line = buffer:sub(1, newline - 1)
     buffer = buffer:sub(newline + 1)
     local response = vim.json.decode(line)
     assert(
       type(response) == 'table' and response.ok == true and response.result == 'true',
-      'bridge action failed: ' .. line
+      'persistent action failed: ' .. line
     )
   end
 end
@@ -71,7 +70,6 @@ end
 local function main()
   local opts = vim.json.decode(table.concat(vim.fn.readfile(arg[1]), '\n'))
   assert(vim.fn.has('macunix') == 1, 'benchmark requires macOS')
-  assert(vim.fn.executable(bridge_path) == 1, 'bridge is missing; run make bridge first')
   print('Creating a temporary Ghostty pane on the right. Avoid interacting with Ghostty until finished.')
   original_id = focused()
   created_id = pane('split', original_id, 'right', '/bin/zsh -f')
@@ -93,8 +91,8 @@ local function main()
     end
   end
   local cases = {
-    { name = 'osascript', run = actions(source_action) },
-    { name = 'bridge', run = actions(start_worker()) },
+    { name = 'ephemeral', run = actions(source_action) },
+    { name = 'persistent', run = actions(start_worker()) },
   }
   print(
     ('Warming up %d pairs; measuring %d actions per transport. Keep the layout unchanged.'):format(
@@ -103,20 +101,19 @@ local function main()
     )
   )
   local results = bench.compare(cases, { iterations = opts.pairs * 2, warmup = opts.warmup * 2 })
-  local speedup = results.osascript.avg / results.bridge.avg
-  local reduction = 100 * (1 - results.bridge.avg / results.osascript.avg)
+  local speedup = results.ephemeral.avg / results.persistent.avg
+  local reduction = 100 * (1 - results.persistent.avg / results.ephemeral.avg)
   for _, case in ipairs(cases) do
     bench.print_result(case.name, results[case.name])
   end
-  print(('Bridge: %.2fx faster; %.1f%% less latency (average).'):format(speedup, reduction))
-  print('Every action returned true. Warmup, bridge startup, and pane setup/cleanup excluded.')
+  print(('Persistent: %.2fx faster than ephemeral; %.1f%% less latency (average).'):format(speedup, reduction))
+  print('Every action returned true. Warmup, persistent process startup, and pane setup/cleanup excluded.')
   print('Measures transport round trips, not end-to-end keypress or rendering latency.')
   if opts.json then
     local report = {
       timestamp = os.date('!%Y-%m-%dT%H:%M:%SZ'),
       platform = vim.uv.os_uname(),
       nvim = vim.version(),
-      bridge_path = bridge_path,
       pairs = opts.pairs,
       warmup_pairs = opts.warmup,
       transports = results,
@@ -130,7 +127,7 @@ end
 
 local ok, err = xpcall(main, debug.traceback)
 if worker then
-  -- Closing stdin normally exits the bridge; bound cleanup if a request got stuck.
+  -- Closing stdin normally exits the persistent process; bound cleanup if a request got stuck.
   pcall(function()
     worker:write(nil)
   end)

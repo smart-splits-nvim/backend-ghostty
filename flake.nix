@@ -32,19 +32,16 @@
         system:
         let
           pkgs = import nixpkgs { inherit system; };
-          packages =
-            (with pkgs; [
-              git
-              gnumake
-              stylua
-              selene
-              just
-              neovim
-              lua-language-server
-              lua51Packages.nlua
-              lua51Packages.busted
-            ])
-            ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.swift ];
+          packages = with pkgs; [
+            git
+            stylua
+            selene
+            just
+            neovim
+            lua-language-server
+            lua51Packages.nlua
+            lua51Packages.busted
+          ];
           # Tests run inside nvim, which loads native Lua modules (e.g. busted's luasystem), so nlua
           # and busted must come from the nixpkgs that built this Neovim and share its glibc.
           testShell =
@@ -80,25 +77,6 @@
               nixpkgs-neovim-0_11.legacyPackages.${system}.neovim-unwrapped;
           # The overlay's CI pushes `checks` (not `packages`) to nix-community.cachix.org.
           devShells.ci-nightly = testShell "ci-nightly" neovim-nightly-overlay.checks.${system}.neovim;
-        }
-        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
-          packages.default = pkgs.stdenv.mkDerivation {
-            pname = "ghostty-smart-splits-bridge";
-            version = "0.1.0";
-            src = ./.;
-            nativeBuildInputs = [
-              pkgs.swift
-              pkgs.gnumake
-            ];
-            buildPhase = ''
-              make bridge
-            '';
-            installPhase = ''
-              mkdir -p $out/bin $out/scripts
-              install -m755 bin/ghostty-smart-splits-bridge $out/bin/
-              install -m644 scripts/ghostty.js $out/scripts/
-            '';
-          };
         }
       );
 }

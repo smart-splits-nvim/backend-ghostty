@@ -11,7 +11,9 @@ vim.api.nvim_set_hl(0, 'Normal', { bg = 'none' })
 vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'none' })
 
 local splits = require('smart-splits')
-local opts = { bridge = vim.env.GSS_BRIDGE == 'true' }
+local opts = {
+  transport = vim.env.GSS_TRANSPORT --[[@as GhosttySmartSplitsTransport]],
+}
 if vim.env.GSS_VERSION == 'v3' then
   require('smart-splits-backend-ghostty').setup(opts)
   splits.setup({ mux = { backend = 'smart-splits-backend-ghostty' }, move = { at_edge = 'stop' } })
