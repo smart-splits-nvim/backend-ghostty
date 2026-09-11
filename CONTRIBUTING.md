@@ -1,30 +1,27 @@
 # Contributing
 
-This project targets macOS and Ghostty. Install the toolchain with Homebrew,
-then allow Xcode Command Line Tools to finish installing:
+This project targets macOS and Ghostty. [Install Nix](https://nixos.org/download/)
+with flakes enabled, then enter the pinned development environment:
 
 ```sh
-xcode-select --install
-brew install neovim stylua lua-language-server luajit luarocks
-
-LUAJIT_PREFIX="$(brew --prefix luajit)"
-ROCKS=(--lua-version=5.1 --lua-dir="$LUAJIT_PREFIX" --local)
-luarocks "${ROCKS[@]}" install luacheck 1.2.0-1
-luarocks "${ROCKS[@]}" install busted 2.3.0
-luarocks "${ROCKS[@]}" install nlua 0.3.2
-eval "$(luarocks "${ROCKS[@]}" path --bin)"
+nix develop
 ```
+
+With direnv installed, run `direnv allow` once instead. The checked-in flake
+provides the same Neovim, Lua, formatting, linting, type-checking, and command
+runner versions locally and in CI, including Swift on macOS for the optional
+bridge.
 
 Run the fast checks from the repository root:
 
 ```sh
-make check
+just check
 ```
 
-This runs formatting, LuaLS, Luacheck, and the focused tests in Neovim. Use
-`make format`, `make lint`, `make typecheck`, or `make test` individually.
-Pass Busted options with `BUSTED_ARGS`, for example:
-`make test BUSTED_ARGS='--filter=bridge'`.
+This runs formatting, LuaLS, Selene, and the focused tests in Neovim. Use
+`just fmt`, `just lint`, `just typecheck`, or `just test` individually.
+Pass Busted options through the environment, for example:
+`BUSTED_ARGS='--filter=bridge' just test`.
 
 ## Real Ghostty tests
 
@@ -33,7 +30,7 @@ These require a logged-in macOS desktop, Ghostty 1.3 or newer at
 permission.
 
 ```sh
-make test-e2e
+just test-e2e
 ```
 
 The harness launches a separate Ghostty process with
@@ -52,18 +49,18 @@ to ignored `deps/` when needed; override them with `SMART_SPLITS_DIR` and
 `SMART_SPLITS_V3_DIR`.
 
 E2E is local-only because it needs a graphical session and Automation
-permission. It is excluded from `make check` and CI.
+permission. It is excluded from `just check` and CI.
 
 ## Benchmark
 
-`make bench` builds the bridge and launches its own Ghostty instance and window.
+`just bench` builds the bridge and launches its own Ghostty instance and window.
 Existing sessions can stay open. It measures real osascript and bridge
 round-trips in two temporary panes, prints latency statistics, and closes the
 test instance.
 
 ```sh
-make bench
-make bench BENCH_ARGS='--pairs 30 --warmup 4 --json /tmp/ghostty-bench.json'
+just bench
+BENCH_ARGS='--pairs 30 --warmup 4 --json /tmp/ghostty-bench.json' just bench
 ```
 
 Leave the benchmark window alone until it finishes. A forced interruption may
@@ -84,4 +81,4 @@ osacompile -l JavaScript -o "$tmpdir/tests.scpt" tests/ghostty.js
 
 Use Conventional Commit prefixes such as `fix:` and `feat:`. Changes to
 navigation, lifecycle handling, or the bridge should
-include `make test-e2e` results when possible.
+include `just test-e2e` results when possible.

@@ -1,4 +1,4 @@
--- Focused unit/failure tests. Real application workflows use make test-e2e.
+-- Focused unit/failure tests. Real application workflows use just test-e2e.
 return {
   _all = {
     lua = 'nlua',

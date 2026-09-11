@@ -9,7 +9,7 @@ local function options()
   for i = 1, #arg, 2 do
     local flag, value = arg[i], arg[i + 1]
     if flag == '--help' then
-      print('make bench BENCH_ARGS="--pairs 10 --warmup 2 --json /tmp/ghostty-bench.json"')
+      print('BENCH_ARGS="--pairs 10 --warmup 2 --json /tmp/ghostty-bench.json" just bench')
       print('Counts are right/left pairs per transport. Requires macOS, Ghostty, and Xcode Command Line Tools.')
       print('Launches an isolated Ghostty window and closes it afterward.')
       return nil

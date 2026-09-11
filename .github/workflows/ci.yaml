@@ -44,33 +44,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
       - name: Check formatting
-        uses: JohnnyMorganz/stylua-action@v5
-        with:
-          version: 2.5.2
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --check .
+        run: nix develop .#ci --command just fmt-check
 
-      - name: Run Luacheck
-        uses: lunarmodules/luacheck@v1
-        with:
-          args: lua tests
-
-      - name: Install type-check tools
-        env:
-          LUALS_VERSION: 3.19.1
-          NEOVIM_VERSION: v0.11.0
-        run: |
-          mkdir -p "$RUNNER_TEMP/luals"
-          curl -fsSL "https://github.com/neovim/neovim/releases/download/$NEOVIM_VERSION/nvim-linux-x86_64.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP"
-          curl -fsSL "https://github.com/LuaLS/lua-language-server/releases/download/$LUALS_VERSION/lua-language-server-$LUALS_VERSION-linux-x64.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP/luals"
-          echo "$RUNNER_TEMP/nvim-linux-x86_64/bin" >> "$GITHUB_PATH"
-          echo "$RUNNER_TEMP/luals/bin" >> "$GITHUB_PATH"
+      - name: Run Selene
+        run: nix develop .#ci --command just lint
 
       - name: Run LuaLS
-        run: make typecheck
+        run: nix develop .#ci --command just typecheck
 
   test:
     name: Test ${{ matrix.os }} / Neovim ${{ matrix.neovim }}
@@ -83,33 +67,40 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # LuaJIT cannot parse the public LuaRocks manifest (65,536 constant limit).
-      # Use PUC Lua 5.1 for installation; nlua still runs tests in Neovim's
-      # LuaJIT, which can load these Lua 5.1 modules.
+      - name: Install Nix
+        if: matrix.neovim == 'stable'
+        uses: cachix/install-nix-action@v31
+
       - uses: leafo/gh-actions-lua@v13
+        if: matrix.neovim != 'stable'
         with:
           luaVersion: '5.1.5'
 
       - uses: leafo/gh-actions-luarocks@v6
+        if: matrix.neovim != 'stable'
 
       - name: Install busted
+        if: matrix.neovim != 'stable'
         run: |
           luarocks install busted 2.3.0
           luarocks install nlua 0.3.2
 
+      - uses: extractions/setup-just@v4
+        if: matrix.neovim != 'stable'
+
       - uses: rhysd/action-setup-vim@v1
+        if: matrix.neovim != 'stable'
         with:
           neovim: true
           version: ${{ matrix.neovim }}
 
-      - name: Build and check macOS automation
-        if: runner.os == 'macOS'
-        run: |
-          make bridge
-          osacompile -l JavaScript -o "$RUNNER_TEMP/ghostty.scpt" scripts/ghostty.js
-          osacompile -l JavaScript -o "$RUNNER_TEMP/ghostty-tests.scpt" tests/ghostty.js
+      - name: Run tests
+        if: matrix.neovim == 'stable'
+        run: nix develop .#ci --command just test
 
-      - run: make test
+      - name: Run tests
+        if: matrix.neovim != 'stable'
+        run: just test
 
   release:
     name: Prepare or publish release

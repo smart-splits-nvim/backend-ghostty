@@ -7,10 +7,12 @@
     "checkThirdParty": false,
     "library": [
       "$VIMRUNTIME/lua",
-      "${3rd}/luv/library"
+      "${3rd}/luv/library",
+      "deps/smart-splits-v3.nvim/lua"
     ],
     "ignoreDir": [
-      "tests"
+      "tests",
+      ".direnv"
     ]
   },
   "diagnostics": {
