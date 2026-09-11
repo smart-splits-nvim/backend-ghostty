@@ -23,7 +23,7 @@ local OWN_MODULES = {
   'ghostty-smart-splits.lifecycle',
   'ghostty-smart-splits.transport',
 }
-local ENV_KEYS = { 'TERM_PROGRAM', 'SSH_CONNECTION', 'TMUX', 'ZELLIJ' }
+local ENV_KEYS = { 'TERM_PROGRAM', 'SSH_CONNECTION', 'TMUX', 'ZELLIJ', 'CMUX_SURFACE_ID' }
 
 local function reset_plugin()
   for _, name in ipairs(OWN_MODULES) do

@@ -62,4 +62,33 @@ describe('health', function()
     require('smart-splits-backend-ghostty').setup({ transport = 'ephemeral' })
     check('info', "transport = 'ephemeral': each request starts osascript")
   end)
+
+  it('health names cmux, which also reports TERM_PROGRAM=ghostty', function()
+    h.mock()
+    local reports
+    h.stub(
+      vim,
+      'health',
+      setmetatable({}, {
+        __index = function(_, level)
+          return function(message)
+            table.insert(reports, { level, message })
+          end
+        end,
+      })
+    )
+    local function reported(expected_message)
+      reports = {}
+      require('ghostty-smart-splits.health').check()
+      for _, report in ipairs(reports) do
+        if report[1] == 'ok' and report[2] == expected_message then
+          return true
+        end
+      end
+      return false
+    end
+    assert.is_true(reported('Running in Ghostty'))
+    vim.env.CMUX_SURFACE_ID = 'surface-1'
+    assert.is_true(reported('Running in cmux'))
+  end)
 end)

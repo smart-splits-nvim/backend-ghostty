@@ -23,11 +23,12 @@ function M.report()
   else
     vim.health.info("transport = 'persistent': starts on the next attachment or action")
   end
+  -- cmux embeds Ghostty and reports TERM_PROGRAM=ghostty too.
   if vim.env.TERM_PROGRAM == 'ghostty' then
-    vim.health.ok('Running in Ghostty')
+    vim.health.ok(vim.env.CMUX_SURFACE_ID and 'Running in cmux' or 'Running in Ghostty')
     vim.health.info('Automation permissions: not checked')
   else
-    vim.health.warn('Not running in Ghostty')
+    vim.health.warn('Not running in Ghostty or cmux')
   end
   if vim.env.SSH_CONNECTION or vim.env.TMUX or vim.env.ZELLIJ then
     vim.health.warn('SSH and nested terminal multiplexers are not supported')

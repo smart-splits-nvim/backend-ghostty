@@ -1,19 +1,50 @@
 // The ephemeral transport runs this once per request; the persistent transport
-// keeps it running with `serve`. Address the Ghostty process that owns this
+// keeps it running with `serve`. Address the terminal app that owns this
 // process tree, rather than whichever instance Launch Services happens to
 // resolve for the application name.
 ObjC.import("AppKit");
 
-var targetPID;
-function owningGhosttyPID() {
-  if (targetPID) return targetPID;
-  var apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(
-    "com.mitchellh.ghostty",
-  );
-  var candidates = {};
-  for (var i = 0; i < apps.count; i++) {
-    candidates[apps.objectAtIndex(i).processIdentifier] = true;
-  }
+// A supported app: its name, and the four-character codes from its scripting
+// dictionary. cmux embeds Ghostty and mirrors Ghostty.sdef's object model
+// under its own codes.
+var GHOSTTY = {
+  name: "ghostty",
+  codes: {
+    suite: "Ghst",
+    frontWindow: "GFWn",
+    selectedTab: "GWsT",
+    focusedTerminal: "GTfT",
+    terminal: "Gtrm",
+    target: "GonT",
+  },
+};
+var CMUX = {
+  name: "cmux",
+  codes: {
+    suite: "Cmux",
+    frontWindow: "CMFW",
+    selectedTab: "CMsT",
+    focusedTerminal: "CMfT",
+    terminal: "CMtr",
+    target: "CMoT",
+  },
+};
+
+function appFor(bundleID) {
+  if (typeof bundleID !== "string") return undefined;
+  if (bundleID === "com.mitchellh.ghostty") return GHOSTTY;
+  // Release, nightly, rc, staging, and debug builds, including tagged ones.
+  if (
+    bundleID === "com.cmuxterm.app" ||
+    bundleID.indexOf("com.cmuxterm.app.") === 0
+  )
+    return CMUX;
+  return undefined;
+}
+
+var owner;
+function owningTerminal() {
+  if (owner) return owner;
   var pipe = $.NSPipe.pipe;
   var task = $.NSTask.alloc.init;
   task.launchPath = "/bin/ps";
@@ -32,16 +63,24 @@ function owningGhosttyPID() {
     var pair = row.trim().split(/\s+/);
     parents[Number(pair[0])] = Number(pair[1]);
   });
+  // The nearest matching ancestor wins, so Ghostty started from a cmux shell
+  // still addresses Ghostty.
   var pid = $.NSProcessInfo.processInfo.processIdentifier;
   while (pid > 1) {
-    if (candidates[pid]) return (targetPID = pid);
+    var running =
+      $.NSRunningApplication.runningApplicationWithProcessIdentifier(pid);
+    var bundleID = running.isNil()
+      ? undefined
+      : ObjC.unwrap(running.bundleIdentifier);
+    var app = appFor(bundleID);
+    if (app) return (owner = { pid: pid, bundleID: bundleID, app: app });
     pid = parents[pid];
   }
-  throw Error("No owning Ghostty process found");
+  throw Error("No owning Ghostty or cmux process found");
 }
 
-// Four-character event/property codes come from Ghostty.sdef. Constructing the
-// address ourselves preserves the PID; JXA Application(pid) can resolve by bundle.
+// Constructing the address ourselves preserves the PID; JXA Application(pid)
+// can resolve by bundle.
 var D = $.NSAppleEventDescriptor;
 function code(s) {
   return (
@@ -102,10 +141,10 @@ function prop(name, from) {
   return obj.coerceToDescriptorType(code("obj "));
 }
 
-function terminal(id) {
+function terminal(className, id) {
   var obj = D.recordDescriptor;
   obj.setDescriptorForKeyword(
-    D.descriptorWithTypeCode(code("Gtrm")),
+    D.descriptorWithTypeCode(code(className)),
     code("want"),
   );
   obj.setDescriptorForKeyword(
@@ -118,19 +157,39 @@ function terminal(id) {
 }
 
 function focusedTerminalID() {
-  // ID of focused terminal / selected tab / front window (Ghostty.sdef).
+  var host = owningTerminal();
+  var codes = host.app.codes;
+  // ID of focused terminal / selected tab / front window.
   return ObjC.unwrap(
-    send(owningGhosttyPID(), "core", "getd", {
-      "----": prop("ID  ", prop("GTfT", prop("GWsT", prop("GFWn")))),
+    send(host.pid, "core", "getd", {
+      "----": prop(
+        "ID  ",
+        prop(
+          codes.focusedTerminal,
+          prop(codes.selectedTab, prop(codes.frontWindow)),
+        ),
+      ),
     }).stringValue,
   );
 }
 
 function performAction(terminalID, action) {
-  return !!send(owningGhosttyPID(), "Ghst", "PfAc", {
-    "----": D.descriptorWithString(action),
-    GonT: terminal(terminalID),
-  }).booleanValue;
+  var host = owningTerminal();
+  var codes = host.app.codes;
+  var params = { "----": D.descriptorWithString(action) };
+  params[codes.target] = terminal(codes.terminal, terminalID);
+  var performed = !!send(host.pid, codes.suite, "PfAc", params).booleanValue;
+  // cmux reports goto_split as performed even when no pane lies in that
+  // direction, which would hide every edge from smart-splits. Only a focus
+  // change proves the move happened. Ghostty answers accurately, and the
+  // actions that do not move focus are left alone.
+  if (
+    performed &&
+    host.app.name === "cmux" &&
+    action.indexOf("goto_split:") === 0
+  )
+    return focusedTerminalID() !== terminalID;
+  return performed;
 }
 
 // Persistent transport requests and replies are one JSON object per line; the

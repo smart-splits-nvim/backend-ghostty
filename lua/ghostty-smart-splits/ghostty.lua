@@ -1,4 +1,12 @@
 -- Ghostty operations shared by the smart-splits integration adapters.
+--
+-- A request passes through three layers:
+--   1. the actions below (`perform`, `move`, `resize`, `split`), which need an
+--      attached terminal and answer true or false,
+--   2. `dispatch`, which picks the transport: the persistent osascript process
+--      in transport.lua, falling back to a one-shot process,
+--   3. `osascript`/`osascript_async`, which start that one-shot process.
+-- Only the startup terminal lookup in `attach` is asynchronous.
 local M = {}
 local config = require('ghostty-smart-splits.config')
 local transport = require('ghostty-smart-splits.transport')
@@ -26,7 +34,7 @@ local function report_error(result)
   end)
 end
 
-local function run(script, ...)
+local function osascript(script, ...)
   if not M.detect() then
     return nil
   end
@@ -46,7 +54,7 @@ local function run(script, ...)
   return vim.trim(result.stdout or '')
 end
 
-local function run_async(script, callback, ...)
+local function osascript_async(script, callback, ...)
   if not M.detect() then
     callback(nil)
     return false
@@ -82,7 +90,7 @@ local function dispatch(request, script, ...)
       return type(result) == 'string' and result or nil
     end
   end
-  return run(script, ...)
+  return osascript(script, ...)
 end
 
 function M.focused_terminal_id()
@@ -108,7 +116,7 @@ function M.attach(callback)
     return true
   end
   attaching = true
-  local started = run_async('focused-terminal-id', function(id)
+  local started = osascript_async('focused-terminal-id', function(id)
     attaching = false
     if id and id ~= '' then
       terminal_id = id
