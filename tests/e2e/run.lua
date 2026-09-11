@@ -243,7 +243,7 @@ local function test_ghostty_resize(direction)
   end)
 end
 
-local function shell_command(version, bridge, checkout)
+local function shell_command(version, transport, checkout)
   local argv = {
     'env',
     '-u',
@@ -257,7 +257,7 @@ local function shell_command(version, bridge, checkout)
     'GSS_ROOT=' .. root,
     'GSS_SMART_SPLITS=' .. checkout,
     'GSS_VERSION=' .. version,
-    'GSS_BRIDGE=' .. tostring(bridge),
+    'GSS_TRANSPORT=' .. transport,
     'XDG_STATE_HOME=' .. scratch,
     'NVIM_LOG_FILE=' .. scratch .. '/nvim.log',
     'GSS_OSASCRIPT_LOG=' .. osascript_log,
@@ -274,13 +274,14 @@ local function shell_command(version, bridge, checkout)
   return table.concat(vim.tbl_map(vim.fn.shellescape, argv), ' ')
 end
 
-local function scenario(version, bridge, checkout)
-  report(('RUN %s / %s'):format(version, bridge and 'bridge' or 'osascript'))
-  socket = scratch .. '/' .. version .. '-' .. tostring(bridge) .. '.sock'
+local function scenario(version, transport, checkout)
+  report(('RUN %s / %s'):format(version, transport))
+  local persistent = transport == 'persistent'
+  socket = scratch .. '/' .. version .. '-' .. transport .. '.sock'
   osascript_log = socket .. '.osascript'
   editor = ghostty('new')
   ghostty('focus', editor)
-  ghostty('text', editor, shell_command(version, bridge, checkout))
+  ghostty('text', editor, shell_command(version, transport, checkout))
   key(editor, 'enter')
   wait_for('Neovim did not start', function()
     return remote('vim.g.e2e_ready') == true
@@ -333,16 +334,17 @@ local function scenario(version, bridge, checkout)
   for _, direction in ipairs(directions) do
     test_ghostty_resize(direction)
   end
-  check('the selected transport has the expected real bridge process', function()
+  check('the selected transport has the expected persistent osascript process', function()
     local found = false
-    for line in run({ 'ps', '-axo', 'pid=,ppid=,comm=' }):gmatch('[^\n]+') do
-      local child, parent, executable = line:match('^%s*(%d+)%s+(%d+)%s+(.+)$')
-      if tonumber(parent) == nvim_pid and executable == root .. '/bin/ghostty-smart-splits-bridge' then
+    local serve = root .. '/scripts/ghostty.js serve'
+    for line in run({ 'ps', '-axo', 'pid=,ppid=,args=' }):gmatch('[^\n]+') do
+      local child, parent, args = line:match('^%s*(%d+)%s+(%d+)%s+(.+)$')
+      if tonumber(parent) == nvim_pid and args:sub(-#serve) == serve then
         found = true
-        report('  Bridge PID ' .. child .. ' (Neovim PID ' .. nvim_pid .. ')')
+        report('  Persistent osascript PID ' .. child .. ' (Neovim PID ' .. nvim_pid .. ')')
       end
     end
-    return found == bridge
+    return found == persistent
   end)
 
   ghostty('focus', editor)
@@ -381,12 +383,16 @@ local function scenario(version, bridge, checkout)
   -- coordinator uses its original PATH and cannot contribute to this log.
   local launches = vim.fn.readfile(osascript_log)
   report(('  Neovim osascript launches: %d'):format(#launches))
-  if bridge and #launches ~= 1 then
-    report('  Unexpected bridge-session osascript launches:\n    ' .. table.concat(launches, '\n    '))
+  -- A persistent session launches osascript twice: the initial terminal lookup
+  -- and then the persistent process. Anything more is a fallback or a restart.
+  if persistent and #launches ~= 2 then
+    report('  Unexpected persistent-session osascript launches:\n    ' .. table.concat(launches, '\n    '))
   end
   check('the full session used the selected transport without fallback', function()
-    if bridge then
-      return #launches == 1 and launches[1]:match(' focused%-terminal%-id$') ~= nil
+    if persistent then
+      return #launches == 2
+        and launches[1]:match(' focused%-terminal%-id$') ~= nil
+        and launches[2]:match(' serve$') ~= nil
     end
     return #launches > 1
   end)
@@ -401,7 +407,6 @@ end
 local function main()
   assert(vim.fn.has('macunix') == 1, 'E2E tests require macOS and a logged-in graphical session')
   assert(vim.fn.isdirectory(app) == 1, 'Ghostty app not found: ' .. app)
-  assert(vim.fn.executable(root .. '/bin/ghostty-smart-splits-bridge') == 1, 'Run make bridge first')
   vim.fn.mkdir(scratch, 'p')
   -- Observe process launches without replacing either transport: every call
   -- receives the original arguments and runs the installed osascript binary.
@@ -424,8 +429,8 @@ local function main()
   for _, version in ipairs({ 'v2', 'v3' }) do
     local checkout = version == 'v2' and vim.env.SMART_SPLITS_DIR or vim.env.SMART_SPLITS_V3_DIR
     assert(checkout and vim.fn.isdirectory(checkout) == 1, 'Missing smart-splits checkout for ' .. version)
-    for _, bridge in ipairs({ false, true }) do
-      scenario(version, bridge, checkout)
+    for _, transport in ipairs({ 'ephemeral', 'persistent' }) do
+      scenario(version, transport, checkout)
     end
   end
 end

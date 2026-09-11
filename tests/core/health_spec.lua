@@ -29,7 +29,7 @@ describe('health', function()
     assert.is_true(warned)
   end)
 
-  it('health reports bridge preference and availability without starting it', function()
+  it('health reports the transport and its status without starting it', function()
     local state = h.mock()
     local reports
     h.stub(
@@ -53,15 +53,13 @@ describe('health', function()
         end
       end
       assert.is_true(found)
-      assert.are.equal(0, #state.bridge_starts)
+      assert.are.equal(0, #state.persistent_starts)
       assert.are.equal(0, #state.calls)
     end
-    check('info', 'bridge = false: actions use osascript')
-    require('smart-splits-backend-ghostty').setup({ bridge = true })
-    check('warn', 'bridge = true: binary is missing')
-    state.bridge_available = true
-    check('info', 'bridge = true: binary is available')
-    require('smart-splits-backend-ghostty').setup({ bridge = false })
-    check('info', 'bridge = false: actions use osascript')
+    check('info', "transport = 'ephemeral': each request starts osascript")
+    require('smart-splits-backend-ghostty').setup({ transport = 'persistent' })
+    check('info', "transport = 'persistent': starts on the next attachment or action")
+    require('smart-splits-backend-ghostty').setup({ transport = 'ephemeral' })
+    check('info', "transport = 'ephemeral': each request starts osascript")
   end)
 end)

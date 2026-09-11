@@ -47,18 +47,14 @@ test-core: deps-v3
       busted --run=core ${BUSTED_ARGS:-} < /dev/null
 
 # Run real Ghostty workflows in a dedicated instance (macOS only)
-test-e2e: bridge deps-v2 deps-v3
+test-e2e: deps-v2 deps-v3
     SMART_SPLITS_DIR="$(cd "${SMART_SPLITS_DIR:-deps/smart-splits.nvim}" && pwd)" \
       SMART_SPLITS_V3_DIR="$(cd "${SMART_SPLITS_V3_DIR:-deps/smart-splits-v3.nvim}" && pwd)" \
       nvim --headless -u NONE -i NONE -l tests/e2e/run.lua
 
 # Benchmark real transports in a dedicated Ghostty instance (macOS only)
-bench: bridge
+bench:
     nvim --headless -u NONE -i NONE -l tests/bench/run.lua ${BENCH_ARGS:-}
-
-# Build the optional macOS bridge
-bridge:
-    make bridge
 
 # Check formatting
 fmt-check:

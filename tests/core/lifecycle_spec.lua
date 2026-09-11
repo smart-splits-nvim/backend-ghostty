@@ -1,32 +1,32 @@
 local h = require('tests.helpers')
 local mock = h.mock
 
-describe('session', function()
+describe('lifecycle', function()
   after_each(h.restore)
 
   it('custom tables and failed release retries', function()
     local state = mock()
-    local session = require('ghostty-smart-splits.session')
+    local lifecycle = require('ghostty-smart-splits.lifecycle')
     local opts = { key_table = 'editor' }
-    session.configure(opts)
-    session.activate()
+    lifecycle.configure(opts)
+    lifecycle.activate()
     h.wait_for_calls(state, 2)
     assert.are.equal('activate_key_table:editor', h.last_action(state))
     assert.is_nil(opts.multiplexer_integration)
     state.response = { code = 0, stdout = 'false' }
-    assert.is_false(session.release_keys())
+    assert.is_false(lifecycle.release_keys())
     state.response = { code = 0, stdout = 'true' }
-    assert.is_true(session.release_keys())
+    assert.is_true(lifecycle.release_keys())
   end)
 
   it('active tables cannot be changed until released', function()
     local state = mock()
-    local session = require('ghostty-smart-splits.session')
+    local lifecycle = require('ghostty-smart-splits.lifecycle')
     local config = require('ghostty-smart-splits.config')
-    session.configure({ key_table = 'editor' })
-    session.activate()
+    lifecycle.configure({ key_table = 'editor' })
+    lifecycle.activate()
     h.wait_for_calls(state, 2)
-    local ok, message = pcall(session.configure, { key_table = 'other' })
+    local ok, message = pcall(lifecycle.configure, { key_table = 'other' })
     assert.is_false(ok)
     assert(type(message) == 'string')
     assert.are.equal(
@@ -34,19 +34,19 @@ describe('session', function()
       message:match('Release the active key table before changing key_table$')
     )
     assert.are.equal('editor', config.key_table)
-    assert.is_true(session.release_keys())
-    session.configure({ key_table = 'other' })
-    session.activate()
+    assert.is_true(lifecycle.release_keys())
+    lifecycle.configure({ key_table = 'other' })
+    lifecycle.activate()
     h.wait_for_calls(state, 4)
     assert.are.equal('activate_key_table:other', h.last_action(state))
   end)
 
   it('a failed attachment recovers when Neovim regains focus', function()
     local state = mock()
-    local session = require('ghostty-smart-splits.session')
+    local lifecycle = require('ghostty-smart-splits.lifecycle')
     local ghostty = require('ghostty-smart-splits.ghostty')
     state.id = ''
-    assert.is_true(session.activate())
+    assert.is_true(lifecycle.activate())
     h.wait_for_calls(state, 1)
     h.settle()
 
@@ -66,9 +66,9 @@ describe('session', function()
 
   it('attachment stops retrying once the failures stop being transient', function()
     local state = mock()
-    local session = require('ghostty-smart-splits.session')
+    local lifecycle = require('ghostty-smart-splits.lifecycle')
     state.id = ''
-    assert.is_true(session.activate())
+    assert.is_true(lifecycle.activate())
     h.wait_for_calls(state, 1)
     h.settle()
     for _ = 1, 10 do
@@ -85,8 +85,8 @@ describe('session', function()
 
   it('suspending before attachment completes does not claim keys', function()
     local state = mock()
-    local session = require('ghostty-smart-splits.session')
-    assert.is_true(session.activate())
+    local lifecycle = require('ghostty-smart-splits.lifecycle')
+    assert.is_true(lifecycle.activate())
     assert.are.equal(1, #state.calls) -- Lookup issued; its callback has not run yet.
 
     vim.api.nvim_exec_autocmds('VimSuspend', {})

@@ -1,7 +1,9 @@
--- Persistent Ghostty automation process and newline-delimited JSON transport.
+-- The persistent transport: scripts/ghostty.js kept running by osascript in
+-- serve mode, spoken to over newline-delimited JSON. The ephemeral transport is
+-- the per-request osascript in ghostty.lua.
 local M = {}
 local root = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h')
-local binary_path = root .. '/bin/ghostty-smart-splits-bridge'
+local command = { 'osascript', '-l', 'JavaScript', root .. '/scripts/ghostty.js', 'serve' }
 local process_id
 local response_queue = {}
 local stdout_buffer = ''
@@ -22,12 +24,12 @@ function M.start()
   if process_id then
     return true
   end
-  if vim.fn.executable(binary_path) ~= 1 then
+  if vim.fn.executable('osascript') ~= 1 then
     return false
   end
 
   last_exit = nil
-  local job = vim.fn.jobstart({ binary_path }, {
+  local job = vim.fn.jobstart(command, {
     in_io = 'pipe',
     out_io = 'pipe',
     err_io = 'pipe',
@@ -63,12 +65,12 @@ function M.start()
   return true
 end
 
--- Returns the response and whether the bridge handled the request.
+-- Returns the response and whether the persistent process handled the request.
 function M.request(request)
   -- The vim.wait below pumps the event loop, so a scheduled callback can reach
   -- this function while a request is still outstanding. Two callers sharing one
   -- pipe would consume each other's replies, so refuse the nested one and let it
-  -- fall back to osascript.
+  -- fall back to ephemeral osascript.
   if in_flight then
     return nil, false
   end
@@ -88,8 +90,8 @@ function M.request(request)
     return nil, false
   end
 
-  -- A healthy bridge responds well below the osascript action latency.
-  -- Keep a broken/stale bridge from adding a full one-second stall before fallback.
+  -- A healthy process responds well below the ephemeral osascript latency.
+  -- Keep a broken/stale process from adding a full one-second stall before fallback.
   local completed = vim.wait(250, function()
     return #response_queue > 0 or process_id == nil
   end, 10)
@@ -106,7 +108,7 @@ function M.request(request)
   end
   if response.ok ~= true then
     vim.schedule(function()
-      vim.notify_once('ghostty-smart-splits: ' .. (response.error or 'bridge failed'), vim.log.levels.WARN)
+      vim.notify_once('ghostty-smart-splits: ' .. (response.error or 'request failed'), vim.log.levels.WARN)
     end)
     return false, true
   end
@@ -117,9 +119,9 @@ function M.request(request)
   return response.result, true
 end
 
----Return the bridge to its initial state, including the fields `stop()` keeps
----so `status()` stays meaningful across a restart. Tests call this instead of
----dropping the module from `package.loaded`.
+---Return the transport to its initial state, including the fields `stop()`
+---keeps so `status()` stays meaningful across a restart. Tests call this instead
+---of dropping the module from `package.loaded`.
 function M.reset()
   M.stop()
   last_exit = nil
@@ -128,9 +130,7 @@ end
 
 function M.status()
   return {
-    executable = vim.fn.executable(binary_path) == 1,
     last_exit = last_exit,
-    path = binary_path,
     running = process_id ~= nil,
   }
 end

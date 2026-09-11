@@ -1,6 +1,6 @@
 -- smart-splits v3 interface; transport and lifecycle are shared with v2.
 local ghostty = require('ghostty-smart-splits.ghostty')
-local session = require('ghostty-smart-splits.session')
+local lifecycle = require('ghostty-smart-splits.lifecycle')
 local M = {
   name = 'ghostty',
   protocol_version = '3.0.0',
@@ -9,10 +9,10 @@ local M = {
 -- Configuration is inert: only the selected backend may attach or claim keys.
 ---@param opts? GhosttySmartSplitsConfig
 function M.setup(opts)
-  session.configure(opts)
+  lifecycle.configure(opts)
 end
 M.detect = ghostty.detect
-M.activate = session.activate
+M.activate = lifecycle.activate
 
 -- Core delegates `at_edge` here and only handles it inside Neovim's layout when
 -- this returns false. Ghostty cannot wrap, so `wrap` is left to core; `split`

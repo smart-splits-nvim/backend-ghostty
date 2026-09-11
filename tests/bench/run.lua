@@ -10,7 +10,7 @@ local function options()
     local flag, value = arg[i], arg[i + 1]
     if flag == '--help' then
       print('BENCH_ARGS="--pairs 10 --warmup 2 --json /tmp/ghostty-bench.json" just bench')
-      print('Counts are right/left pairs per transport. Requires macOS, Ghostty, and Xcode Command Line Tools.')
+      print('Counts are right/left pairs per transport. Requires macOS and Ghostty.')
       print('Launches an isolated Ghostty window and closes it afterward.')
       return nil
     end
@@ -69,7 +69,6 @@ local function main()
   local app = '/Applications/Ghostty.app'
   assert(vim.fn.has('macunix') == 1, 'benchmark requires macOS and a graphical session')
   assert(vim.fn.isdirectory(app) == 1, 'Ghostty app not found: ' .. app)
-  assert(vim.fn.executable(root .. '/bin/ghostty-smart-splits-bridge') == 1, 'Run make bridge first')
   if opts.json then
     opts.json = vim.fn.fnamemodify(opts.json, ':p')
   end

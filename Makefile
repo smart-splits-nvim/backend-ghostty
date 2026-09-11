@@ -1,13 +1,7 @@
 .PHONY: bridge
 
-bridge: bin/ghostty-smart-splits-bridge
-
-bin/ghostty-smart-splits-bridge: bridge/main.swift Makefile
-	@if [ "$$(uname -s)" != "Darwin" ]; then \
-		echo "Skipping Ghostty bridge build: macOS is required"; \
-	elif ! command -v swiftc >/dev/null 2>&1; then \
-		echo "Skipping Ghostty bridge build: swiftc is unavailable"; \
-	else \
-		mkdir -p bin; \
-		swiftc -O -framework Foundation -framework Carbon -framework OSAKit -o "$@" bridge/main.swift; \
-	fi
+# Deprecated: the transport now runs through osascript, so nothing is built.
+# The target stays so existing `make bridge` install hooks keep working.
+bridge:
+	@echo "backend-ghostty: 'make bridge' is deprecated and does nothing." >&2
+	@echo "Remove it from your plugin manager's build step." >&2

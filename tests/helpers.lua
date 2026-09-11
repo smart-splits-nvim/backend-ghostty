@@ -18,10 +18,10 @@ end
 
 -- Reset the state used by failure-path tests between cases.
 local OWN_MODULES = {
-  'ghostty-smart-splits.bridge',
   'ghostty-smart-splits.config',
   'ghostty-smart-splits.ghostty',
-  'ghostty-smart-splits.session',
+  'ghostty-smart-splits.lifecycle',
+  'ghostty-smart-splits.transport',
 }
 local ENV_KEYS = { 'TERM_PROGRAM', 'SSH_CONNECTION', 'TMUX', 'ZELLIJ' }
 
@@ -35,14 +35,17 @@ end
 ---patched global and environment variable is undone by `restore()`.
 function M.mock()
   reset_plugin()
+  -- Most specs assert the osascript launches, so they run on the ephemeral
+  -- transport. Specs for the persistent transport opt in with setup().
+  require('ghostty-smart-splits.config').setup({ transport = 'ephemeral' })
   local state = {
     calls = {},
     warnings = {},
     response = { code = 0, stdout = 'true' },
     id = 'terminal-1',
-    bridge_starts = {},
-    bridge_requests = {},
-    bridge_stops = {},
+    persistent_starts = {},
+    persistent_requests = {},
+    persistent_stops = {},
   }
   local real_has, real_executable = vim.fn.has, vim.fn.executable
   local env = {}
@@ -59,33 +62,31 @@ function M.mock()
     return real_has(feature)
   end)
   M.stub(vim.fn, 'executable', function(name)
-    if name:match('ghostty%-smart%-splits%-bridge$') then
-      return state.bridge_available and 1 or 0
-    end
     return name == 'osascript' and (state.missing and 0 or 1) or real_executable(name)
   end)
   M.stub(vim, 'notify_once', function(message)
     table.insert(state.warnings, message)
   end)
-  local bridge_callbacks
+  local persistent_callbacks
   M.stub(vim.fn, 'jobstart', function(argv, opts)
-    assert(argv[1]:match('ghostty%-smart%-splits%-bridge$'))
-    table.insert(state.bridge_starts, argv)
-    bridge_callbacks = opts
-    state.bridge_callbacks = opts
-    return state.bridge_start_failure and -1 or #state.bridge_starts
+    assert(argv[1] == 'osascript' and argv[#argv] == 'serve')
+    assert(vim.fn.filereadable(argv[4]) == 1)
+    table.insert(state.persistent_starts, argv)
+    persistent_callbacks = opts
+    state.persistent_callbacks = opts
+    return state.persistent_start_failure and -1 or #state.persistent_starts
   end)
   M.stub(vim.fn, 'jobstop', function(job)
-    table.insert(state.bridge_stops, job)
+    table.insert(state.persistent_stops, job)
     return 1
   end)
   M.stub(vim.fn, 'chansend', function(job, data)
     local request = vim.json.decode(data)
-    table.insert(state.bridge_requests, request)
-    local response = state.bridge_response
+    table.insert(state.persistent_requests, request)
+    local response = state.persistent_response
       or (request.command == 'focused-terminal-id' and { ok = true, result = state.id })
       or { ok = true, result = 'true' }
-    bridge_callbacks.on_stdout(job, { vim.json.encode(response), '' })
+    persistent_callbacks.on_stdout(job, { vim.json.encode(response), '' })
     return #data
   end)
   M.stub(vim, 'system', function(argv, opts, on_exit)
@@ -114,8 +115,8 @@ function M.mock()
 
   on_restore(function()
     M.settle(10)
-    -- Reset while the doubles are still installed: a leftover bridge job id is
-    -- a small integer, and handing one to the real `jobstop` could close an
+    -- Reset while the doubles are still installed: a leftover persistent job id
+    -- is a small integer, and handing one to the real `jobstop` could close an
     -- actual channel.
     reset_plugin()
     for _, key in ipairs(ENV_KEYS) do

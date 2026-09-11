@@ -1,7 +1,7 @@
 -- Ghostty operations shared by the smart-splits integration adapters.
 local M = {}
-local bridge = require('ghostty-smart-splits.bridge')
 local config = require('ghostty-smart-splits.config')
+local transport = require('ghostty-smart-splits.transport')
 local script_dir = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h') .. '/scripts/'
 local terminal_id
 local attaching = false
@@ -72,11 +72,12 @@ local function run_async(script, callback, ...)
   return true
 end
 
--- Prefer the persistent bridge; fall back to osascript when it cannot answer.
--- A bridge that reports an AppleScript failure fails closed rather than retrying.
+-- Prefer the persistent process; fall back to an ephemeral osascript call when
+-- it cannot answer. A persistent process that reports an AppleScript failure
+-- fails closed rather than retrying.
 local function dispatch(request, script, ...)
-  if config.bridge then
-    local result, handled = bridge.request(request)
+  if config.transport == 'persistent' then
+    local result, handled = transport.request(request)
     if handled then
       return type(result) == 'string' and result or nil
     end
@@ -111,8 +112,8 @@ function M.attach(callback)
     attaching = false
     if id and id ~= '' then
       terminal_id = id
-      if config.bridge then
-        bridge.start()
+      if config.transport == 'persistent' then
+        transport.start()
       end
     end
     local callbacks = attach_callbacks

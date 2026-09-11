@@ -1,7 +1,9 @@
+-- Follows Neovim's lifecycle: attach and claim the key table on enter, focus,
+-- and resume; release it on suspend; release it and stop the transport on exit.
 local M = {}
-local bridge = require('ghostty-smart-splits.bridge')
 local config = require('ghostty-smart-splits.config')
 local ghostty = require('ghostty-smart-splits.ghostty')
+local transport = require('ghostty-smart-splits.transport')
 local claimed = false
 local claim_pending = false
 local active = false
@@ -19,8 +21,8 @@ function M.configure(opts)
     error('Release the active key table before changing key_table')
   end
   config.setup(opts)
-  if not config.bridge then
-    bridge.stop()
+  if config.transport ~= 'persistent' then
+    transport.stop()
   end
 end
 
@@ -125,7 +127,7 @@ function M.activate()
     callback = function()
       active = false
       M.release_keys()
-      bridge.stop()
+      transport.stop()
     end,
   })
   return attach_and_claim()

@@ -1,6 +1,7 @@
-// Shared by osascript and the persistent bridge. Address the Ghostty process
-// that owns this process tree, rather than whichever instance Launch Services
-// happens to resolve for the application name.
+// The ephemeral transport runs this once per request; the persistent transport
+// keeps it running with `serve`. Address the Ghostty process that owns this
+// process tree, rather than whichever instance Launch Services happens to
+// resolve for the application name.
 ObjC.import('AppKit');
 
 var targetPID;
@@ -92,8 +93,54 @@ function performAction(terminalID, action) {
   }).booleanValue;
 }
 
+// Persistent transport requests and replies are one JSON object per line; the
+// Lua side is lua/ghostty-smart-splits/transport.lua.
+function handle(request) {
+  if (request.command === 'focused-terminal-id') return focusedTerminalID();
+  if (request.command !== 'perform') throw Error('Unknown command: ' + request.command);
+  if (typeof request.terminalID !== 'string' || typeof request.action !== 'string') {
+    throw Error('perform needs a terminalID and an action');
+  }
+  return performAction(request.terminalID, request.action);
+}
+
+function respond(line) {
+  try {
+    // serve() reads bytes as Latin-1; this turns them back into UTF-8 text.
+    var result = handle(JSON.parse(decodeURIComponent(escape(line))));
+    if (result === undefined || result === null) throw Error('Ghostty automation returned no result');
+    return { ok: true, result: String(result).trim() };
+  } catch (error) {
+    return { ok: false, error: String((error && error.message) || error) };
+  }
+}
+
+// Staying alive keeps the JavaScript engine, AppKit, and the owning PID loaded
+// between requests. Returns when Neovim closes stdin.
+function serve() {
+  var input = $.NSFileHandle.fileHandleWithStandardInput;
+  var output = $.NSFileHandle.fileHandleWithStandardOutput;
+  // One Latin-1 character per byte, so a read that ends inside a UTF-8
+  // character neither fails to decode nor holds back the lines before it.
+  var buffer = '';
+  for (;;) {
+    // Blocks until bytes arrive; an empty read is EOF. JXA reports
+    // NSData.length as a string, so compare it as a number.
+    var data = input.availableData;
+    if (Number(data.length) === 0) return;
+    buffer += ObjC.unwrap($.NSString.alloc.initWithDataEncoding(data, $.NSISOLatin1StringEncoding));
+    var newline;
+    while ((newline = buffer.indexOf('\n')) !== -1) {
+      var line = buffer.slice(0, newline);
+      buffer = buffer.slice(newline + 1);
+      output.writeData($(JSON.stringify(respond(line)) + '\n').dataUsingEncoding($.NSUTF8StringEncoding));
+    }
+  }
+}
+
 function run(argv) {
   if (argv[0] === 'focused-terminal-id' && argv.length === 1) return focusedTerminalID();
   if (argv[0] === 'perform-action' && argv.length === 3) return performAction(argv[1], argv[2]);
-  throw Error('Expected focused-terminal-id or perform-action <terminal ID> <action>');
+  if (argv[0] === 'serve' && argv.length === 1) return serve();
+  throw Error('Expected focused-terminal-id, perform-action <terminal ID> <action>, or serve');
 }

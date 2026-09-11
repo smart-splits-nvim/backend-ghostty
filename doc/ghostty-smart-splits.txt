@@ -93,51 +93,55 @@ CONFIGURATION
 It defaults to `nvim` and must be a non-empty string. Changing it to a
 different name while it is claimed is an error; release it first.
 
-`bridge` is a boolean, default false. When true, actions and pane lookups
-prefer the persistent bridge and fall back to osascript when it is
-unavailable. When false, both use only osascript, even if the binary exists.
+`transport` selects how actions and pane lookups reach Ghostty. It defaults to
+`persistent`, which keeps one osascript process running and falls back to
+ephemeral when that process cannot answer. `ephemeral` starts osascript for
+every request.
+
+`bridge` is a deprecated boolean alias for `transport`: true selects
+`persistent` and false selects `ephemeral`. It still works and warns once.
 
 Use the v2 root module or the v3 backend module, depending on the integration:
 >
   -- v2
-  -- If navigation feels slow, build the bridge and set bridge = true.
-  require('ghostty-smart-splits').setup({ key_table = 'editor', bridge = false })
+  -- transport = 'ephemeral' starts osascript for every request instead.
+  require('ghostty-smart-splits').setup({ key_table = 'editor', transport = 'persistent' })
 
   -- v3: configure the backend before smart-splits setup.
   require('smart-splits-backend-ghostty').setup({
     key_table = 'editor',
-    bridge = false, -- If navigation feels slow, build the bridge and set true.
+    transport = 'persistent', -- Or 'ephemeral' to start osascript per request.
   })
 <
-Configuration does not run AppleScript, start a bridge, attach to Ghostty, or
-register autocommands. Disabling the bridge stops an existing bridge immediately.
-Enabling it takes effect on the next attachment or action. In v2, the root
-setup continues with attachment and activation; in v3, core activates the
-selected backend.
+Configuration does not run AppleScript, start the persistent process, attach
+to Ghostty, or register autocommands. Switching to ephemeral stops a running
+persistent process immediately. Switching to persistent takes effect on the
+next attachment or action. In v2, the root setup continues with attachment and
+activation; in v3, core activates the selected backend.
 
 setup() merges over the current options: a call that names one option leaves
-the rest alone, so the bridge can be toggled at runtime without repeating
+the rest alone, so the transport can be switched at runtime without repeating
 key_table. An unknown option name is an error rather than a silent no-op.
 Call config.reset() to restore every default.
 
-In local measurements, bridge actions took about 30 ms versus about 130 ms
-through per-call osascript; results vary by machine.
+In local measurements, actions took about 15 ms with persistent versus about
+100 ms with ephemeral; results vary by machine.
 
-The bridge is a persistent Swift process that reuses compiled AppleScript to
-reduce the overhead of sending actions to Ghostty.
+The persistent transport keeps scripts/ghostty.js running in one osascript
+process, so the JavaScript engine and the Ghostty process lookup are set up
+once rather than for every request. There is nothing to build. Each Neovim
+instance owns one persistent process and stops it on exit. The initial
+terminal lookup always uses ephemeral osascript, asynchronously, before the
+persistent process is running.
 
-The optional bridge requires Xcode Command Line Tools. Build it from the
-plugin directory, then set bridge = true:
->
-  make bridge
-<
-This creates bin/ghostty-smart-splits-bridge. A plugin manager can run this
-command on install/update; setup() never compiles it. Each Neovim instance owns
-one bridge and stops it on exit. Only the initial terminal lookup uses
-osascript, asynchronously, before the bridge is running.
+Earlier versions started osascript for every request unless a compiled bridge
+was built and enabled. `make bridge` from those versions is deprecated: it no
+longer builds anything and only prints a notice, so remove it from plugin
+manager build steps.
 
 smart-splits v2 brackets each pane move with a terminal lookup, so one move is
-three Ghostty requests. All three take the bridge when it is enabled.
+three Ghostty requests. All three use the persistent process when it is
+enabled.
 
 ==============================================================================
 3. API                                             *ghostty-smart-splits-api*
@@ -154,10 +158,9 @@ require('ghostty-smart-splits.config').reset()
     replaces, so this is the only way back to the defaults.
 
 :checkhealth ghostty-smart-splits
-    Check local prerequisites, bridge preference, and running status without
-    starting the bridge. Show the binary path when an enabled bridge is
-    missing. With v3, :checkhealth smart-splits
-    also includes backend diagnostics.
+    Check local prerequisites, the selected transport, and whether the
+    persistent process is running, without starting it. With v3,
+    :checkhealth smart-splits also includes backend diagnostics.
 
 ==============================================================================
 4. LIMITATIONS                            *ghostty-smart-splits-limitations*

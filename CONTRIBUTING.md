@@ -9,8 +9,7 @@ nix develop
 
 With direnv installed, run `direnv allow` once instead. The checked-in flake
 provides the same Neovim, Lua, formatting, linting, type-checking, and command
-runner versions locally and in CI, including Swift on macOS for the optional
-bridge.
+runner versions locally and in CI.
 
 Run the fast checks from the repository root:
 
@@ -21,7 +20,7 @@ just check
 This runs formatting, LuaLS, Selene, and the focused tests in Neovim. Use
 `just fmt`, `just lint`, `just typecheck`, or `just test` individually.
 Pass Busted options through the environment, for example:
-`BUSTED_ARGS='--filter=bridge' just test`.
+`BUSTED_ARGS='--filter=transport' just test`.
 
 CI also runs the tests against Neovim 0.11 and nightly with the `ci-0_11`
 and `ci-nightly` shells, for example:
@@ -47,28 +46,27 @@ just test-e2e
 
 The harness launches a separate Ghostty process with
 `tests/e2e/ghostty.conf`, so existing sessions can stay open. It runs real
-Neovim and Ghostty through smart-splits v2 and v3, using both osascript and the
-persistent bridge. It checks split movement, shell movement, resizing,
+Neovim and Ghostty through smart-splits v2 and v3, using both the ephemeral and
+persistent transports. It checks split movement, shell movement, resizing,
 `Ctrl-Z`/`fg`, key-table lifecycle, and navigation after Neovim exits.
 The v3 sessions also check all three `move.at_edge` modes at the outer edge
 and with existing neighbors, directional pane creation, navigation out of
 split zoom, and navigation in native macOS fullscreen. Each direction is
 tested with both transports. Fullscreen tests temporarily switch macOS Spaces.
 
-Bridge sessions verify a real bridge child process and reject any osascript
-fallback after initial attachment. The upstream v2/v3 checkouts are downloaded
-to ignored `deps/` when needed; override them with `SMART_SPLITS_DIR` and
-`SMART_SPLITS_V3_DIR`.
+Persistent sessions verify a real `serve` child process and reject any
+ephemeral fallback after initial attachment. The upstream v2/v3 checkouts are
+downloaded to ignored `deps/` when needed; override them with
+`SMART_SPLITS_DIR` and `SMART_SPLITS_V3_DIR`.
 
 E2E is local-only because it needs a graphical session and Automation
 permission. It is excluded from `just check` and CI.
 
 ## Benchmark
 
-`just bench` builds the bridge and launches its own Ghostty instance and window.
-Existing sessions can stay open. It measures real osascript and bridge
-round-trips in two temporary panes, prints latency statistics, and closes the
-test instance.
+`just bench` launches its own Ghostty instance and window. Existing sessions
+can stay open. It measures real ephemeral and persistent round-trips in two
+temporary panes, prints latency statistics, and closes the test instance.
 
 ```sh
 just bench
@@ -78,11 +76,13 @@ BENCH_ARGS='--pairs 30 --warmup 4 --json /tmp/ghostty-bench.json' just bench
 Leave the benchmark window alone until it finishes. A forced interruption may
 leave that disposable window open.
 
-## Automation and bridge
+## Automation and transports
 
-The osascript transport and Swift bridge share [`scripts/ghostty.js`](scripts/ghostty.js)
-and address the Ghostty process owning the current Neovim instance. Build the
-bridge with `make bridge`; syntax-check the scripts with:
+Both transports run [`scripts/ghostty.js`](scripts/ghostty.js) and address the
+Ghostty process owning the current Neovim instance. The ephemeral transport
+runs one command per osascript process; the persistent transport keeps the
+script running with `serve` and reads newline-delimited JSON requests from
+stdin. Syntax-check the scripts with:
 
 ```sh
 tmpdir="$(mktemp -d)"
@@ -92,5 +92,5 @@ osacompile -l JavaScript -o "$tmpdir/tests.scpt" tests/ghostty.js
 ```
 
 Use Conventional Commit prefixes such as `fix:` and `feat:`. Changes to
-navigation, lifecycle handling, or the bridge should
+navigation, lifecycle handling, or the transports should
 include `just test-e2e` results when possible.

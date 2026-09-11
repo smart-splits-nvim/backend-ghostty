@@ -16,18 +16,12 @@ function M.report()
   else
     vim.health.warn('osascript is unavailable')
   end
-  if not require('ghostty-smart-splits.config').bridge then
-    vim.health.info('bridge = false: actions use osascript')
+  if require('ghostty-smart-splits.config').transport == 'ephemeral' then
+    vim.health.info("transport = 'ephemeral': each request starts osascript")
+  elseif require('ghostty-smart-splits.transport').status().running then
+    vim.health.ok("transport = 'persistent': osascript process is running")
   else
-    local bridge = require('ghostty-smart-splits.bridge').status()
-    if bridge.running then
-      vim.health.ok('bridge = true: persistent bridge is running')
-    elseif bridge.executable then
-      vim.health.info('bridge = true: binary is available; bridge is not running')
-    else
-      vim.health.warn('bridge = true: binary is missing; actions fall back to osascript. Run make bridge')
-      vim.health.info('Bridge path: ' .. bridge.path)
-    end
+    vim.health.info("transport = 'persistent': starts on the next attachment or action")
   end
   if vim.env.TERM_PROGRAM == 'ghostty' then
     vim.health.ok('Running in Ghostty')
