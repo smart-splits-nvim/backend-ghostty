@@ -17,10 +17,40 @@ Run the fast checks from the repository root:
 just check
 ```
 
-This runs formatting, LuaLS, Selene, and the focused tests in Neovim. Use
-`just fmt`, `just lint`, `just typecheck`, or `just test` individually.
-Pass Busted options through the environment, for example:
-`BUSTED_ARGS='--filter=transport' just test`.
+This runs formatting, the documentation check, LuaLS, Selene, and the focused
+tests in Neovim. Use `just fmt`, `just lint`, `just typecheck`, `just docs`, or
+`just test` individually. Pass Busted options through the environment, for
+example: `BUSTED_ARGS='--filter=transport' just test`.
+
+## Documentation
+
+`README.md` is the only place documentation is written. `just docs` regenerates
+`doc/ghostty-smart-splits.txt` from it with
+[panvimdoc](https://github.com/kdheepak/panvimdoc) and rebuilds `doc/tags`.
+Both generated files are committed; run `just docs` and include the result in
+any commit that touches the README. CI runs `just docs-check`, which fails when
+they disagree.
+
+`examples/ghostty.conf` duplicates the README's Ghostty config block by hand.
+Keep the two in step when either changes.
+
+panvimdoc comes from the pinned flake, so the output is identical locally and
+in CI. A few README conventions keep the generated help readable:
+
+- Headings become help tags. Keep them short and free of parentheses, or the
+  tag and its table-of-contents entry overflow 78 columns. Two headings at the
+  same level with the same text collide; `just docs` runs `:helptags` and fails
+  on the duplicate.
+
+- Content above the first `##` heading is not rendered as a section, so the
+  title, tagline, and demo video sit between `<!-- panvimdoc-ignore-start -->`
+  and `<!-- panvimdoc-ignore-end -->`.
+
+- Separate list items with a blank line. panvimdoc re-wraps loose lists to 78
+  columns and leaves tight ones on one long line.
+
+- Prefer two-column tables. Wider ones are squeezed into narrow columns and
+  their inline code markup is dropped.
 
 CI also runs the tests against Neovim 0.11 and nightly with the `ci-0_11`
 and `ci-nightly` shells, for example:

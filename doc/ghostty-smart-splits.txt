@@ -1,191 +1,432 @@
-*ghostty-smart-splits.txt*  Neovim-first Ghostty navigation on macOS
+*ghostty-smart-splits.txt*            Neovim-first Ghostty navigation on macOS
 
 ==============================================================================
-CONTENTS                                                *ghostty-smart-splits*
+Table of Contents                     *ghostty-smart-splits-table-of-contents*
 
-  1. Requirements                          |ghostty-smart-splits-requirements|
-  2. Setup                                 |ghostty-smart-splits-setup|
-  3. API                                   |ghostty-smart-splits-api|
-  4. Limitations                           |ghostty-smart-splits-limitations|
+1. How it works                            |ghostty-smart-splits-how-it-works|
+2. Requirements                            |ghostty-smart-splits-requirements|
+3. Installation                            |ghostty-smart-splits-installation|
+  - smart-splits v2        |ghostty-smart-splits-installation-smart-splits-v2|
+  - smart-splits v3        |ghostty-smart-splits-installation-smart-splits-v3|
+4. Neovim mappings                      |ghostty-smart-splits-neovim-mappings|
+5. Ghostty configuration          |ghostty-smart-splits-ghostty-configuration|
+6. Check the setup                      |ghostty-smart-splits-check-the-setup|
+7. Options                                      |ghostty-smart-splits-options|
+  - key_table                         |ghostty-smart-splits-options-key_table|
+  - transport                         |ghostty-smart-splits-options-transport|
+  - bridge                               |ghostty-smart-splits-options-bridge|
+  - Passing options             |ghostty-smart-splits-options-passing-options|
+8. Edge behavior with v3          |ghostty-smart-splits-edge-behavior-with-v3|
+9. Zoom and fullscreen              |ghostty-smart-splits-zoom-and-fullscreen|
+10. cmux                                           |ghostty-smart-splits-cmux|
+11. Persistent transport           |ghostty-smart-splits-persistent-transport|
+12. Migrating from the bridge |ghostty-smart-splits-migrating-from-the-bridge|
+13. API                                             |ghostty-smart-splits-api|
+14. Limitations                             |ghostty-smart-splits-limitations|
 
 ==============================================================================
-1. REQUIREMENTS                           *ghostty-smart-splits-requirements*
+1. How it works                            *ghostty-smart-splits-how-it-works*
 
-Neovim 0.11+, smart-splits.nvim, Ghostty 1.3+ or cmux on macOS, and macOS
-Automation permission. Run Neovim locally inside Ghostty or cmux. Configure
-Ghostty's nvim key table before starting Neovim; the ready-to-copy
-configuration is in examples/ghostty.conf.
+smart-splits handles Neovim windows first; at an editor edge, the matching
+Ghostty binding handles the pane. Ghostty’s `performable` bindings give
+Neovim first chance at each key. This plugin uses Ghostty’s AppleScript API
+when smart-splits reaches an editor edge, and keeps a temporary key table
+active while Neovim is running.
 
-cmux embeds Ghostty and reads the same Ghostty config file, so the same
-configuration applies; run `cmux reload-config` after editing it.
-cmux reports `goto_split` as performed even when no pane lies in that direction,
-so a move counts as successful only once focus has left the Neovim pane.
-That costs one extra pane lookup per move in cmux; Ghostty answers accurately
-and skips it.
+Both smart-splits v2 and the experimental v3 backend are supported.
+
 
 ==============================================================================
-2. SETUP                                         *ghostty-smart-splits-setup*
+2. Requirements                            *ghostty-smart-splits-requirements*
 
-SMART-SPLITS V2
+- Neovim 0.11+, smart-splits.nvim, and Ghostty 1.3+ or cmux <https://cmux.com> on
+    macOS.
+- Ghostty AppleScript enabled (the default) and macOS Automation permission.
+- Neovim running locally, inside a Ghostty or cmux pane.
 
-Configure smart-splits normally, then call setup() once at startup with the
-Neovim pane focused:
->
-  require('smart-splits').setup({}) -- Existing options.
-  require('ghostty-smart-splits').setup({})
+
+==============================================================================
+3. Installation                            *ghostty-smart-splits-installation*
+
+Choose one integration below, then add the
+|ghostty-smart-splits-neovim-mappings| and
+|ghostty-smart-splits-ghostty-configuration|. Both are required.
+
+
+SMART-SPLITS V2            *ghostty-smart-splits-installation-smart-splits-v2*
+
+With lazy.nvim:
+
+>lua
+    {
+      'smart-splits-nvim/smart-splits.nvim',
+      lazy = false,
+      dependencies = { 'smart-splits-nvim/backend-ghostty' },
+      config = function()
+        require('smart-splits').setup({}) -- Your existing options.
+        require('ghostty-smart-splits').setup()
+      end,
+    }
 <
-The v2 setup preserves existing smart-splits options and sets
-`multiplexer_integration = 'ghostty'` and `at_edge = 'stop'`. It returns false
-when the session is unsupported; terminal attachment and key-table activation
-continue asynchronously after setup.
 
-SMART-SPLITS V3 (EXPERIMENTAL)
+With `vim.pack` (Neovim 0.12+):
 
-Use smart-splits.nvim's `v3` Git ref and select the backend:
->
-  require('smart-splits').setup({
-    mux = { backend = 'smart-splits-backend-ghostty' },
-    move = { at_edge = 'stop' },
-  })
+>lua
+    vim.pack.add({
+      'https://github.com/smart-splits-nvim/smart-splits.nvim',
+      'https://github.com/smart-splits-nvim/backend-ghostty',
+    })
+
+    require('smart-splits').setup({}) -- Your existing options.
+    require('ghostty-smart-splits').setup()
 <
-Do not call the v2 root module's setup() with v3. Core activates the selected
-backend during setup; start Neovim with its Ghostty pane focused. The v3
-protocol may change before release.
 
-MAPPINGS
+The v2 setup preserves existing smart-splits options and adds
+`multiplexer_integration = 'ghostty'` and `at_edge = 'stop'`. Call it once at
+startup with the Neovim pane focused. It returns `false` when the session is
+unsupported; terminal attachment and key-table activation continue
+asynchronously after it returns.
 
-Neither plugin creates mappings automatically. After your plugin setup (after
-require('lazy').setup(...) for lazy.nvim), add these Normal-mode mappings.
-They work with v2 and v3 and match examples/ghostty.conf:
->
-  local splits = require('smart-splits')
-  vim.keymap.set('n', '<C-h>', splits.move_cursor_left)
-  vim.keymap.set('n', '<C-j>', splits.move_cursor_down)
-  vim.keymap.set('n', '<C-k>', splits.move_cursor_up)
-  vim.keymap.set('n', '<C-l>', splits.move_cursor_right)
-  vim.keymap.set('n', '<M-h>', splits.resize_left)
-  vim.keymap.set('n', '<M-j>', splits.resize_down)
-  vim.keymap.set('n', '<M-k>', splits.resize_up)
-  vim.keymap.set('n', '<M-l>', splits.resize_right)
+
+SMART-SPLITS V3            *ghostty-smart-splits-installation-smart-splits-v3*
+
+Experimental. Use smart-splits’ `v3` Git ref. The protocol and backend may
+change before release.
+
+With lazy.nvim:
+
+>lua
+    {
+      'smart-splits-nvim/smart-splits.nvim',
+      branch = 'v3',
+      lazy = false,
+      dependencies = {
+        {
+          'smart-splits-nvim/backend-ghostty',
+          main = 'smart-splits-backend-ghostty',
+        },
+      },
+      opts = {
+        mux = {
+          backend = 'smart-splits-backend-ghostty',
+        },
+        move = {
+          at_edge = 'stop',
+        },
+      },
+    }
 <
-<M-...> is the Mac Option/Alt key. Configure Ghostty's matching key table too.
 
-V3 EDGE BEHAVIOR                             *ghostty-smart-splits-at-edge*
+With `vim.pack` (Neovim 0.12+):
 
-Configure move.at_edge in smart-splits, not in the backend options. Movement
-first tries a Neovim window, then a neighboring Ghostty pane. Only when neither
-exists in the requested direction does the edge setting apply:
+>lua
+    vim.pack.add({
+      {
+        src = 'https://github.com/smart-splits-nvim/smart-splits.nvim',
+        version = 'v3',
+      },
+      'https://github.com/smart-splits-nvim/backend-ghostty',
+    })
 
-  stop     Stay in the current Neovim window.
-  wrap     Wrap to the opposite edge of the Neovim layout in this Ghostty
-           pane. With one Neovim window, stay there. No Ghostty pane wrapping.
-  split    Create and focus a Ghostty pane in that direction. If Ghostty
-           cannot create it, core falls back to creating a Neovim split.
+    require('smart-splits').setup({
+      mux = {
+        backend = 'smart-splits-backend-ghostty',
+      },
+      move = {
+        at_edge = 'stop',
+      },
+    })
+<
 
-All three modes navigate to existing Ghostty neighbors. In particular, stop
-does not disable crossing the Neovim/Ghostty boundary. Custom move.at_edge
-functions are handled by smart-splits when the backend cannot move.
+Do not call the v2 `ghostty-smart-splits` setup when using v3. smart-splits
+activates the selected backend during its own setup, so start Neovim with its
+Ghostty pane focused.
 
-ZOOM AND FULLSCREEN                         *ghostty-smart-splits-zoom*
+
+==============================================================================
+4. Neovim mappings                      *ghostty-smart-splits-neovim-mappings*
+
+Neither plugin creates mappings automatically. Add these after your plugin
+setup (after `require('lazy').setup(...)` when using lazy.nvim). They work with
+both v2 and v3 and match the Ghostty configuration below.
+
+>lua
+    local splits = require('smart-splits')
+
+    vim.keymap.set('n', '<C-h>', splits.move_cursor_left)
+    vim.keymap.set('n', '<C-j>', splits.move_cursor_down)
+    vim.keymap.set('n', '<C-k>', splits.move_cursor_up)
+    vim.keymap.set('n', '<C-l>', splits.move_cursor_right)
+
+    vim.keymap.set('n', '<M-h>', splits.resize_left)
+    vim.keymap.set('n', '<M-j>', splits.resize_down)
+    vim.keymap.set('n', '<M-k>', splits.resize_up)
+    vim.keymap.set('n', '<M-l>', splits.resize_right)
+<
+
+These mappings apply in Normal mode. `<M-...>` is the Mac Option/Alt key.
+
+
+==============================================================================
+5. Ghostty configuration          *ghostty-smart-splits-ghostty-configuration*
+
+Copy this to your Ghostty config, reload it (`cmux reload-config` on cmux),
+then start Neovim in the target pane. The same content is in
+`examples/ghostty.conf`.
+
+>ini
+    # Outside Neovim.
+    # Move
+    keybind = performable:ctrl+h=goto_split:left
+    keybind = performable:ctrl+j=goto_split:down
+    keybind = performable:ctrl+k=goto_split:up
+    keybind = performable:ctrl+l=goto_split:right
+
+    # Resize
+    keybind = performable:alt+h=resize_split:left,30
+    keybind = performable:alt+j=resize_split:down,30
+    keybind = performable:alt+k=resize_split:up,30
+    keybind = performable:alt+l=resize_split:right,30
+
+    # Inside Neovim.
+    keybind = nvim/
+    # Move
+    keybind = nvim/ctrl+h=text:\x08
+    keybind = nvim/ctrl+j=text:\x0a
+    keybind = nvim/ctrl+k=text:\x0b
+    keybind = nvim/ctrl+l=text:\x0c
+
+    # Resize
+    keybind = nvim/alt+h=esc:h
+    keybind = nvim/alt+j=esc:j
+    keybind = nvim/alt+k=esc:k
+    keybind = nvim/alt+l=esc:l
+<
+
+The keys in Neovim and Ghostty must match.
+
+
+==============================================================================
+6. Check the setup                      *ghostty-smart-splits-check-the-setup*
+
+Start Neovim in a Ghostty pane and run:
+
+>vim
+    :checkhealth ghostty-smart-splits
+<
+
+It reports local prerequisites, the selected transport, and whether the
+persistent process is running, without starting it. With v3, `:checkhealth
+smart-splits` also includes backend diagnostics.
+
+Then open a second Ghostty pane beside it and press `<C-h>` and `<C-l>` from
+the edges of your Neovim layout. Focus should cross into the neighboring pane
+and back.
+
+
+==============================================================================
+7. Options                                      *ghostty-smart-splits-options*
+
+Both integrations accept the same backend options.
+
+
+KEY_TABLE                             *ghostty-smart-splits-options-key_table*
+
+The Ghostty key table used while Neovim is active. Defaults to `'nvim'` and
+must be a non-empty string. Changing it to a different name while it is claimed
+is an error; release it first.
+
+
+TRANSPORT                             *ghostty-smart-splits-options-transport*
+
+How actions and pane lookups reach Ghostty. Defaults to `'persistent'`, which
+keeps one `osascript` process running and falls back to `'ephemeral'` when that
+process cannot answer. `'ephemeral'` starts `osascript` for every request.
+
+Switching to `'ephemeral'` stops a running persistent process immediately.
+Switching to `'persistent'` takes effect on the next attachment or action.
+
+
+BRIDGE                                   *ghostty-smart-splits-options-bridge*
+
+Deprecated alias for `transport`. `true` selects `'persistent'` and `false`
+selects `'ephemeral'`. It still works and warns once per session.
+
+
+PASSING OPTIONS                 *ghostty-smart-splits-options-passing-options*
+
+With v2, pass them to the plugin setup:
+
+>lua
+    require('ghostty-smart-splits').setup({
+      key_table = 'nvim',
+      transport = 'persistent', -- Or 'ephemeral' to start osascript per request.
+    })
+<
+
+With v3, configure the backend **before** smart-splits selects and activates
+it:
+
+>lua
+    require('smart-splits-backend-ghostty').setup({
+      key_table = 'nvim',
+      transport = 'persistent', -- Or 'ephemeral' to start osascript per request.
+    })
+    require('smart-splits').setup({
+      mux = { backend = 'smart-splits-backend-ghostty' },
+      move = { at_edge = 'stop' },
+    })
+<
+
+`setup` merges over the current options: a call that names one option leaves
+the rest alone, so the transport can be switched at runtime without repeating
+`key_table`. An unknown option name is an error rather than a silent no-op.
+Call `require('ghostty-smart-splits.config').reset()` to restore every default.
+
+Configuration alone does not run AppleScript, start the persistent process,
+attach to Ghostty, or register autocommands.
+
+
+==============================================================================
+8. Edge behavior with v3          *ghostty-smart-splits-edge-behavior-with-v3*
+
+Set `move.at_edge` in smart-splits, not in the backend options:
+
+>lua
+    require('smart-splits').setup({
+      mux = { backend = 'smart-splits-backend-ghostty' },
+      move = { at_edge = 'wrap' }, -- 'stop', 'wrap', or 'split'
+    })
+<
+
+Movement first tries a Neovim window, then a neighboring Ghostty pane. If
+neither exists in the requested direction:
+
+  -----------------------------------------------------------------------
+  move.at_edge                        Behavior
+  ----------------------------------- -----------------------------------
+  'stop'                              Stay in the current Neovim window.
+
+  'wrap'                              Wrap to the opposite edge of the
+                                      Neovim layout within the current
+                                      Ghostty pane. With one Neovim
+                                      window, stay there. Ghostty panes
+                                      are not wrapped.
+
+  'split'                             Create and focus a Ghostty pane in
+                                      that direction. If Ghostty cannot
+                                      create it, smart-splits falls back
+                                      to creating a Neovim split.
+  -----------------------------------------------------------------------
+All three modes navigate to an existing Ghostty neighbor. In particular,
+`'stop'` does not prevent crossing the Neovim/Ghostty boundary. A custom
+`move.at_edge` function is handled by smart-splits after the backend cannot
+move.
+
+
+==============================================================================
+9. Zoom and fullscreen              *ghostty-smart-splits-zoom-and-fullscreen*
 
 The backend does not detect zoom/fullscreen or suppress navigation in those
-states. Neovim windows still take priority; at an editor edge, Ghostty handles
-the usual goto_split action. There is no disable_nav_when_zoomed option.
-On Ghostty 1.3.1, moving to a neighboring pane leaves split zoom. Window
-fullscreen allows navigation inside Neovim and across Ghostty panes.
+states. Movement inside Neovim still takes priority. At an editor edge, Ghostty
+handles the usual `goto_split` action. There is no `disable_nav_when_zoomed`
+backend option.
 
-CONFIGURATION
+On Ghostty 1.3.1, navigating to a neighbor from a zoomed pane leaves split
+zoom. Window fullscreen also allows navigation between Neovim windows and
+Ghostty panes.
 
-`key_table` is the name of the Ghostty key table used while Neovim is active.
-It defaults to `nvim` and must be a non-empty string. Changing it to a
-different name while it is claimed is an error; release it first.
 
-`transport` selects how actions and pane lookups reach Ghostty. It defaults to
-`persistent`, which keeps one osascript process running and falls back to
-ephemeral when that process cannot answer. `ephemeral` starts osascript for
-every request.
+==============================================================================
+10. cmux                                           *ghostty-smart-splits-cmux*
 
-`bridge` is a deprecated boolean alias for `transport`: true selects
-`persistent` and false selects `ephemeral`. It still works and warns once.
+cmux <https://cmux.com> embeds Ghostty and works in its place. It reads the
+same Ghostty config file, so the |ghostty-smart-splits-ghostty-configuration|
+applies unchanged; run `cmux reload-config` after editing it.
 
-Use the v2 root module or the v3 backend module, depending on the integration:
->
-  -- v2
-  -- transport = 'ephemeral' starts osascript for every request instead.
-  require('ghostty-smart-splits').setup({ key_table = 'editor', transport = 'persistent' })
+cmux reports `goto_split` as performed even when no pane lies in that
+direction, so a move is called successful only once focus has actually left the
+Neovim pane. That costs one extra pane lookup per move in cmux; Ghostty answers
+accurately and skips it.
 
-  -- v3: configure the backend before smart-splits setup.
-  require('smart-splits-backend-ghostty').setup({
-    key_table = 'editor',
-    transport = 'persistent', -- Or 'ephemeral' to start osascript per request.
-  })
-<
-Configuration does not run AppleScript, start the persistent process, attach
-to Ghostty, or register autocommands. Switching to ephemeral stops a running
-persistent process immediately. Switching to persistent takes effect on the
-next attachment or action. In v2, the root setup continues with attachment and
-activation; in v3, core activates the selected backend.
 
-setup() merges over the current options: a call that names one option leaves
-the rest alone, so the transport can be switched at runtime without repeating
-key_table. An unknown option name is an error rather than a silent no-op.
-Call config.reset() to restore every default.
+==============================================================================
+11. Persistent transport           *ghostty-smart-splits-persistent-transport*
 
-In local measurements, actions took about 15 ms with persistent versus about
-100 ms with ephemeral; results vary by machine.
+The default, `transport = 'persistent'`, keeps `scripts/ghostty.js` running in
+one `osascript` process per Neovim instance, instead of starting a new process
+for every request. The JavaScript engine and the Ghostty process lookup are
+then set up once rather than for every request. Nothing needs to be built. Set
+`transport = 'ephemeral'` if you would rather not keep a process running.
 
-The persistent transport keeps scripts/ghostty.js running in one osascript
-process, so the JavaScript engine and the Ghostty process lookup are set up
-once rather than for every request. There is nothing to build. Each Neovim
-instance owns one persistent process and stops it on exit. The initial
-terminal lookup always uses ephemeral osascript, asynchronously, before the
-persistent process is running.
-
-Earlier versions started osascript for every request unless a compiled bridge
-was built and enabled. `make bridge` from those versions is deprecated: it no
-longer builds anything and only prints a notice, so remove it from plugin
-manager build steps.
+Both transports address the Ghostty process that owns Neovim, so separate
+Ghostty instances can run alongside each other. Each Neovim instance owns one
+persistent process and stops it on exit. The initial terminal lookup always
+uses ephemeral `osascript`, asynchronously, before the persistent process is
+running.
 
 smart-splits v2 brackets each pane move with a terminal lookup, so one move is
 three Ghostty requests. All three use the persistent process when it is
 enabled.
 
-==============================================================================
-3. API                                             *ghostty-smart-splits-api*
+In local measurements, actions took about 15 ms with `'persistent'` versus
+about 100 ms with `'ephemeral'`; results vary by machine. Run `just bench` from
+the Nix development shell to benchmark locally.
 
-require('ghostty-smart-splits').claim_keys()
-    Push the configured Ghostty key table if it is not already claimed.
-
-require('ghostty-smart-splits').release_keys()
-    Pop the table claimed by this instance. Keys are also released on
-    VimSuspend and VimLeavePre, and claimed again on VimEnter and VimResume.
-
-require('ghostty-smart-splits.config').reset()
-    Restore every option to its default. setup() merges rather than
-    replaces, so this is the only way back to the defaults.
-
-:checkhealth ghostty-smart-splits
-    Check local prerequisites, the selected transport, and whether the
-    persistent process is running, without starting it. With v3,
-    :checkhealth smart-splits also includes backend diagnostics.
 
 ==============================================================================
-4. LIMITATIONS                            *ghostty-smart-splits-limitations*
+12. Migrating from the bridge *ghostty-smart-splits-migrating-from-the-bridge*
 
-macOS only. Action AppleScript calls are synchronous and time out after one
-second.
-The initial Ghostty terminal comes from the focused pane and the lookup is
-asynchronous. Later actions keep using that terminal instead of following
-focus changes.
-A failed lookup is retried when Neovim next regains focus, which is when the
-Automation prompt has been answered and is also proof the focused pane is
-still ours. After five failures the plugin stops trying and warns once.
+Earlier versions started `osascript` for every request unless you built and
+enabled a compiled Swift bridge. The persistent transport is now the default,
+and both bridge settings still work but are deprecated.
 
-Do not stack another Ghostty key table above this one while Neovim is active.
-If a crash or config reload leaves stale state, the Ghostty action
-deactivate_all_key_tables can recover it, but clears every table.
+- `bridge = true` selects `'persistent'`, the new default, and `bridge = false`
+    selects `'ephemeral'`. Either warns once per session: remove `bridge = true`,
+    or replace `bridge = false` with `transport = 'ephemeral'`.
+- `make bridge` no longer builds anything; it prints a deprecation notice and
+    succeeds. Remove `build = 'make bridge'` or the `PackChanged` build hook from
+    your config.
 
-Native performable:goto_split bindings can give Ghostty priority. This plugin
-is for Neovim-first navigation.
 
- vim:tw=78:ts=8:noet:ft=help:norl:
+==============================================================================
+13. API                                             *ghostty-smart-splits-api*
+
+>lua
+    require('ghostty-smart-splits').claim_keys()
+    require('ghostty-smart-splits').release_keys()
+    require('ghostty-smart-splits.config').reset()
+<
+
+- `claim_keys()` pushes the configured Ghostty key table if it is not already
+    claimed.
+- `release_keys()` pops the table claimed by this instance.
+- `config.reset()` restores every option to its default. `setup()` merges rather
+    than replaces, so this is the only way back to the defaults.
+
+Keys are released on `VimSuspend` and `VimLeavePre`, and claimed again on
+`VimEnter` and `VimResume`. Use the functions above only when managing the
+table manually.
+
+See |ghostty-smart-splits-check-the-setup| for `:checkhealth`.
+
+
+==============================================================================
+14. Limitations                             *ghostty-smart-splits-limitations*
+
+- macOS only. Action AppleScript calls are synchronous and time out after one
+    second.
+- The initial Ghostty terminal comes from the focused pane and the lookup is
+    asynchronous. Later actions keep using that terminal instead of following focus
+    changes. A failed lookup is retried when Neovim next regains focus, which is
+    when the Automation prompt has been answered and is also proof the focused pane
+    is still ours. After five failures it stops trying and warns once.
+- Do not stack another Ghostty key table above this one while Neovim is active.
+    If a crash or config reload leaves stale state, Ghostty’s
+    `deactivate_all_key_tables` action can recover it, but clears every table.
+- Native `performable:goto_split` bindings can give Ghostty priority. This plugin
+    is for Neovim-first navigation.
+
+Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
+
+vim:tw=78:ts=8:noet:ft=help:norl:

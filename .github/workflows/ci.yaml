@@ -50,6 +50,9 @@ jobs:
       - name: Check formatting
         run: nix develop .#ci --command just fmt-check
 
+      - name: Check generated docs
+        run: nix develop .#ci --command just docs-check
+
       - name: Run Selene
         run: nix develop .#ci --command just lint
 
