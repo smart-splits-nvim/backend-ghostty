@@ -37,6 +37,7 @@
             stylua
             selene
             just
+            panvimdoc
             neovim
             lua-language-server
             lua51Packages.nlua

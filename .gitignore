@@ -42,7 +42,6 @@ luac.out
 deps/
 .direnv/
 .tmp/
-doc/tags
 *.scpt
 /bin/
 
