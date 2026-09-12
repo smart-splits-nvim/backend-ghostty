@@ -26,3 +26,10 @@ updates:
     groups:
       flake-inputs:
         patterns: ["*"]
+    ignore:
+      # Pinned to the nixpkgs release that ships Neovim 0.11.x; CI asserts the
+      # devshell's `vim.version()` is exactly 0.11, so a newer channel fails by
+      # design. Block channel bumps (25.11 -> 26.05); flake.lock revs on the
+      # pinned branch still get updated.
+      - dependency-name: nixpkgs-neovim-0_11
+        versions: ["> 25.11"]
