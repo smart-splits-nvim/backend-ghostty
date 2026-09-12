@@ -102,6 +102,22 @@ gen-docs dest:
       echo >&2 "helptags rejected the generated vimdoc."
       exit 1
     fi
+    # panvimdoc builds |cross-references| from a link's TEXT, ignoring its
+    # target, so [the mappings below](#neovim-mappings) emits a reference to
+    # |...-the-mappings-below|, which no tag matches and :help cannot follow.
+    # Every project reference must resolve to a tag just built.
+    dangling=""
+    for ref in $(grep -o '|ghostty-smart-splits[A-Za-z0-9_.-]*|' \
+      doc/ghostty-smart-splits.txt | tr -d '|' | sort -u || true); do
+      cut -f1 doc/tags | grep -qxF "$ref" || dangling="$dangling $ref"
+    done
+    if [ -n "$dangling" ]; then
+      for ref in $dangling; do
+        echo >&2 "Dangling help reference: |$ref|"
+      done
+      echo >&2 "A README link's text must match the heading it points at."
+      exit 1
+    fi
 
 # Regenerate the vimdoc and its tags from README.md
 docs: (gen-docs ".")
