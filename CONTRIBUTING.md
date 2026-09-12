@@ -42,6 +42,12 @@ in CI. A few README conventions keep the generated help readable:
   same level with the same text collide; `just docs` runs `:helptags` and fails
   on the duplicate.
 
+- A link to another section must use the target heading as its text.
+  panvimdoc builds the help cross-reference from the link text and ignores the
+  `#anchor`, so `[the mappings below](#neovim-mappings)` produces a reference no
+  tag matches. `just docs` fails on a dangling reference. Links to subheadings
+  cannot work at all, because their tags carry the parent heading as a prefix.
+
 - Content above the first `##` heading is not rendered as a section, so the
   title, tagline, and demo video sit between `<!-- panvimdoc-ignore-start -->`
   and `<!-- panvimdoc-ignore-end -->`.
