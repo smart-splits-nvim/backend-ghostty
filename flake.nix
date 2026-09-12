@@ -5,7 +5,7 @@
     };
     # Neovim 0.11.x
     nixpkgs-neovim-0_11 = {
-      url = "github:nixos/nixpkgs/nixos-25.11";
+      url = "github:nixos/nixpkgs/nixos-26.05";
     };
     flake-utils = {
       url = "github:numtide/flake-utils";
