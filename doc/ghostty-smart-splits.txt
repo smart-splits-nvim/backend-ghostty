@@ -1,4 +1,5 @@
 *ghostty-smart-splits.txt*            Neovim-first Ghostty navigation on macOS
+                             For NVIM v0.11+    Last change: 2026 September 16
 
 ==============================================================================
 Table of Contents                     *ghostty-smart-splits-table-of-contents*
