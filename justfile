@@ -78,6 +78,7 @@ gen-docs dest:
       --project-name ghostty-smart-splits \
       --input-file README.md \
       --description "{{DOC_DESCRIPTION}}" \
+      --vim-version "NVIM v0.11+" \
       --shift-heading-level-by -1 \
       --toc true \
       --dedup-subheadings true \
