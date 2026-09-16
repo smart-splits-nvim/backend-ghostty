@@ -276,9 +276,11 @@ A custom `move.at_edge` function is handled by smart-splits after the backend ca
 The backend does not detect zoom/fullscreen or suppress navigation in those states.
 Movement inside Neovim still takes priority.
 At an editor edge, Ghostty handles the usual `goto_split` action.
-There is no `disable_nav_when_zoomed` backend option.
+smart-splits v2's `disable_multiplexer_nav_when_zoomed` has no effect.
 
-On Ghostty 1.3.1, navigating to a neighbor from a zoomed pane leaves split zoom.
+Navigating to a neighbor from a zoomed pane follows Ghostty's [`split-preserve-zoom`](https://ghostty.org/docs/config/reference#split-preserve-zoom) setting.
+By default it leaves split zoom.
+With `split-preserve-zoom = navigation`, the neighbor becomes the zoomed pane, and so does Neovim's pane when you navigate back.
 Window fullscreen also allows navigation between Neovim windows and Ghostty panes.
 
 ## cmux

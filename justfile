@@ -2,7 +2,7 @@
 SMART_SPLITS_V2_REV := "master"
 SMART_SPLITS_V3_REV := "v3"
 
-# Vimdoc header line; panvimdoc stamps a date instead when this is empty.
+# Description on the vimdoc title line.
 DOC_DESCRIPTION := "Neovim-first Ghostty navigation on macOS"
 
 # Clone smart-splits v2 (no-op if already present)
@@ -78,7 +78,6 @@ gen-docs dest:
       --project-name ghostty-smart-splits \
       --input-file README.md \
       --description "{{DOC_DESCRIPTION}}" \
-      --vim-version "NVIM v0.11+" \
       --shift-heading-level-by -1 \
       --toc true \
       --dedup-subheadings true \
@@ -87,9 +86,12 @@ gen-docs dest:
       exit 1
     fi
     # panvimdoc pads the blank lines inside code blocks; .editorconfig trims
-    # trailing whitespace everywhere. sed -i is not portable, hence the copy.
+    # trailing whitespace everywhere. It also stamps today's local date on the
+    # line under the title, which would make docs-check fail in another
+    # timezone or on any later day, so drop that line.
+    # sed -i is not portable, hence the copy.
     tmp="$(mktemp)"
-    sed -e 's/[[:space:]]*$//' doc/ghostty-smart-splits.txt > "$tmp"
+    sed -e 's/[[:space:]]*$//' -e '2{/Last change:/d;}' doc/ghostty-smart-splits.txt > "$tmp"
     mv "$tmp" doc/ghostty-smart-splits.txt
     # doc/tags is committed: Neovim does not build it for plugins dropped into
     # pack/*/start, and :help then fails with E149. Output is byte-identical
