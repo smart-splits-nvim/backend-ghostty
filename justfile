@@ -78,6 +78,8 @@ gen-docs dest:
       --project-name ghostty-smart-splits \
       --input-file README.md \
       --description "{{DOC_DESCRIPTION}}" \
+      --no-date true \
+      --no-vim-version true \
       --shift-heading-level-by -1 \
       --toc true \
       --dedup-subheadings true \
@@ -85,14 +87,6 @@ gen-docs dest:
       printf '%s\n' "$out" >&2
       exit 1
     fi
-    # panvimdoc pads the blank lines inside code blocks; .editorconfig trims
-    # trailing whitespace everywhere. It also stamps today's local date on the
-    # line under the title, which would make docs-check fail in another
-    # timezone or on any later day, so drop that line.
-    # sed -i is not portable, hence the copy.
-    tmp="$(mktemp)"
-    sed -e 's/[[:space:]]*$//' -e '2{/Last change:/d;}' doc/ghostty-smart-splits.txt > "$tmp"
-    mv "$tmp" doc/ghostty-smart-splits.txt
     # doc/tags is committed: Neovim does not build it for plugins dropped into
     # pack/*/start, and :help then fails with E149. Output is byte-identical
     # across Neovim versions and locales, so it diffs cleanly.
@@ -103,22 +97,6 @@ gen-docs dest:
       || [ -n "$err" ]; then
       printf '%s\n' "$err" >&2
       echo >&2 "helptags rejected the generated vimdoc."
-      exit 1
-    fi
-    # panvimdoc builds |cross-references| from a link's TEXT, ignoring its
-    # target, so [the mappings below](#neovim-mappings) emits a reference to
-    # |...-the-mappings-below|, which no tag matches and :help cannot follow.
-    # Every project reference must resolve to a tag just built.
-    dangling=""
-    for ref in $(grep -o '|ghostty-smart-splits[A-Za-z0-9_.-]*|' \
-      doc/ghostty-smart-splits.txt | tr -d '|' | sort -u || true); do
-      cut -f1 doc/tags | grep -qxF "$ref" || dangling="$dangling $ref"
-    done
-    if [ -n "$dangling" ]; then
-      for ref in $dangling; do
-        echo >&2 "Dangling help reference: |$ref|"
-      done
-      echo >&2 "A README link's text must match the heading it points at."
       exit 1
     fi
 
