@@ -193,7 +193,7 @@ function performAction(terminalID, action) {
 }
 
 // Persistent transport requests and replies are one JSON object per line; the
-// Lua side is lua/ghostty-smart-splits/transport.lua.
+// Lua side is lua/smart-splits-backend-ghostty/transport.lua.
 function handle(request) {
   if (request.command === "focused-terminal-id") return focusedTerminalID();
   if (request.command !== "perform")

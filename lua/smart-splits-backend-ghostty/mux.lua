@@ -1,8 +1,10 @@
--- smart-splits v2 loads this adapter when multiplexer_integration = 'ghostty'.
-local ghostty = require('ghostty-smart-splits.ghostty')
+-- The adapter smart-splits v2 loads as `smart-splits.mux.ghostty`; v2.setup()
+-- registers it under that name. v3 uses init.lua instead.
+local backend = require('smart-splits-backend-ghostty')
+local ghostty = require('smart-splits-backend-ghostty.ghostty')
 local M = {
   type = 'ghostty',
-  is_in_session = ghostty.detect,
+  is_in_session = backend.detect,
   current_pane_id = ghostty.focused_terminal_id,
   next_pane = ghostty.move,
   resize_pane = ghostty.resize,

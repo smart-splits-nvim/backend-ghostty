@@ -6,7 +6,7 @@ describe('ghostty', function()
 
   it('unsupported sessions never launch osascript', function()
     local state = mock()
-    local ghostty = require('ghostty-smart-splits.ghostty')
+    local ghostty = require('smart-splits-backend-ghostty.ghostty')
     state.linux = true
     assert.is_false(ghostty.attach())
     assert.are.equal(0, #state.calls)
@@ -25,7 +25,7 @@ describe('ghostty', function()
 
   it('empty IDs and script failures fail closed', function()
     local state = mock()
-    local ghostty = require('ghostty-smart-splits.ghostty')
+    local ghostty = require('smart-splits-backend-ghostty.ghostty')
     state.id = ''
     assert.is_true(ghostty.attach())
     h.wait_for_calls(state, 1)
@@ -41,12 +41,12 @@ describe('ghostty', function()
     vim.wait(100, function()
       return #state.warnings > 0
     end)
-    assert.are.equal('ghostty-smart-splits: Automation denied', state.warnings[1])
+    assert.are.equal('[smart-splits-backend-ghostty] Automation denied', state.warnings[1])
   end)
 
   it('a missing system result fails closed rather than erroring', function()
     local state = mock()
-    local ghostty = require('ghostty-smart-splits.ghostty')
+    local ghostty = require('smart-splits-backend-ghostty.ghostty')
     assert.is_true(ghostty.attach())
     h.wait_for_calls(state, 1)
     h.settle(10)

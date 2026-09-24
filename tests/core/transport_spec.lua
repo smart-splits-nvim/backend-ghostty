@@ -7,7 +7,7 @@ describe('transport', function()
 
   it('persistent is the default and handles every request after attachment', function()
     local state = mock()
-    require('ghostty-smart-splits.config').reset()
+    require('smart-splits-backend-ghostty.config').reset()
     local backend = require('smart-splits-backend-ghostty')
     assert.is_true(backend.activate())
     h.wait_until(function()
@@ -27,7 +27,7 @@ describe('transport', function()
     h.wait_until(function()
       return #state.persistent_starts == 1
     end, 'the persistent process never started')
-    require('ghostty-smart-splits.transport').stop()
+    require('smart-splits-backend-ghostty.transport').stop()
     state.persistent_start_failure = true
     assert.is_true(backend.move('right'))
     assert.are.equal(2, #state.persistent_starts)
@@ -36,7 +36,7 @@ describe('transport', function()
 
   it('a nested request falls back instead of stealing the reply', function()
     local state = mock()
-    local transport = require('ghostty-smart-splits.transport')
+    local transport = require('smart-splits-backend-ghostty.transport')
     local outer_send = vim.fn.chansend
     local nested_result, nested_handled
     local depth = 0
@@ -58,7 +58,7 @@ describe('transport', function()
 
   it('a burst of output does not desynchronise the next request', function()
     local state = mock()
-    local transport = require('ghostty-smart-splits.transport')
+    local transport = require('smart-splits-backend-ghostty.transport')
     assert.are.equal('terminal-1', transport.request({ command = 'focused-terminal-id' }))
 
     -- Two whole replies plus a partial one, all in a single stdout event.

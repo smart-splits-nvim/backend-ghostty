@@ -18,7 +18,7 @@ describe('health', function()
         end,
       })
     )
-    require('ghostty-smart-splits.health').check()
+    require('smart-splits-backend-ghostty.health').check()
     assert.are.equal(0, #state.calls)
     local warned = false
     for _, report in ipairs(reports) do
@@ -45,7 +45,7 @@ describe('health', function()
     )
     local function check(expected_level, expected_message)
       reports = {}
-      require('ghostty-smart-splits.health').check()
+      require('smart-splits-backend-ghostty.health').check()
       local found = false
       for _, report in ipairs(reports) do
         if report[1] == expected_level and report[2]:find(expected_message, 1, true) then
@@ -61,6 +61,25 @@ describe('health', function()
     check('info', "transport = 'persistent': starts on the next attachment or action")
     require('smart-splits-backend-ghostty').setup({ transport = 'ephemeral' })
     check('info', "transport = 'ephemeral': each request starts osascript")
+  end)
+
+  it('health warns when the backend is disabled by configuration', function()
+    h.mock()
+    local reports = {}
+    h.stub(
+      vim,
+      'health',
+      setmetatable({}, {
+        __index = function(_, level)
+          return function(message)
+            table.insert(reports, { level, message })
+          end
+        end,
+      })
+    )
+    require('smart-splits-backend-ghostty').setup({ enable = false })
+    require('smart-splits-backend-ghostty').health()
+    assert.are.same({ 'warn', 'Backend is disabled by configuration' }, reports[1])
   end)
 
   it('health names cmux, which also reports TERM_PROGRAM=ghostty', function()
@@ -79,7 +98,7 @@ describe('health', function()
     )
     local function reported(expected_message)
       reports = {}
-      require('ghostty-smart-splits.health').check()
+      require('smart-splits-backend-ghostty.health').check()
       for _, report in ipairs(reports) do
         if report[1] == 'ok' and report[2] == expected_message then
           return true
