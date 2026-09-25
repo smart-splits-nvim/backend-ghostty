@@ -12,14 +12,14 @@ vim.api.nvim_set_hl(0, 'NormalFloat', { bg = 'none' })
 
 local splits = require('smart-splits')
 local opts = {
-  transport = vim.env.GSS_TRANSPORT --[[@as GhosttySmartSplitsTransport]],
+  transport = vim.env.GSS_TRANSPORT --[[@as GhosttyBackend.Transport]],
 }
 if vim.env.GSS_VERSION == 'v3' then
   require('smart-splits-backend-ghostty').setup(opts)
   splits.setup({ mux = { backend = 'smart-splits-backend-ghostty' }, move = { at_edge = 'stop' } })
 else
   splits.setup({})
-  require('ghostty-smart-splits').setup(opts)
+  require('smart-splits-backend-ghostty.v2').setup(opts)
 end
 for key, direction in pairs({ h = 'left', j = 'down', k = 'up', l = 'right' }) do
   vim.keymap.set('n', '<C-' .. key .. '>', function()

@@ -1,9 +1,9 @@
 -- Follows Neovim's lifecycle: attach and claim the key table on enter, focus,
 -- and resume; release it on suspend; release it and stop the transport on exit.
 local M = {}
-local config = require('ghostty-smart-splits.config')
-local ghostty = require('ghostty-smart-splits.ghostty')
-local transport = require('ghostty-smart-splits.transport')
+local config = require('smart-splits-backend-ghostty.config')
+local ghostty = require('smart-splits-backend-ghostty.ghostty')
+local transport = require('smart-splits-backend-ghostty.transport')
 local claimed = false
 local claim_pending = false
 local active = false
@@ -14,14 +14,14 @@ local attach_pending = false
 -- never answer; each retry costs one osascript spawn.
 local max_attach_failures = 5
 
----@param opts? GhosttySmartSplitsConfig
+---@param opts? GhosttyBackend.PartialConfig
 function M.configure(opts)
   local name = config.resolve_key_table(opts)
-  if claimed and config.key_table ~= name then
+  if claimed and config.options.key_table ~= name then
     error('Release the active key table before changing key_table')
   end
   config.setup(opts)
-  if config.transport ~= 'persistent' then
+  if config.options.transport ~= 'persistent' then
     transport.stop()
   end
 end
@@ -31,7 +31,7 @@ function M.claim_keys()
   -- Share the pending claim instead of sending a second activation via fallback.
   if not claimed and not claim_pending then
     claim_pending = true
-    claimed = ghostty.perform('activate_key_table:' .. config.key_table)
+    claimed = ghostty.perform('activate_key_table:' .. config.options.key_table)
     claim_pending = false
   end
   return claimed
@@ -57,9 +57,9 @@ end
 
 local function give_up()
   active = false
-  pcall(vim.api.nvim_del_augroup_by_name, 'GhosttySmartSplits')
+  pcall(vim.api.nvim_del_augroup_by_name, 'smart-splits-backend-ghostty')
   vim.notify_once(
-    'ghostty-smart-splits: could not reach Ghostty; see :checkhealth ghostty-smart-splits',
+    '[smart-splits-backend-ghostty] could not reach Ghostty; see :checkhealth smart-splits-backend-ghostty',
     vim.log.levels.WARN
   )
 end
@@ -97,7 +97,7 @@ function M.activate()
   active = true
   attach_failures = 0
   attach_pending = false
-  local group = vim.api.nvim_create_augroup('GhosttySmartSplits', { clear = true })
+  local group = vim.api.nvim_create_augroup('smart-splits-backend-ghostty', { clear = true })
   -- The first Apple Event raises the macOS Automation prompt, which times out
   -- while the dialog waits to be answered, and Ghostty may not be scriptable
   -- yet at startup. Both clear up on their own, so retry on FocusGained: it is
@@ -143,7 +143,7 @@ function M.reset()
   claim_generation = claim_generation + 1
   attach_failures = 0
   attach_pending = false
-  pcall(vim.api.nvim_del_augroup_by_name, 'GhosttySmartSplits')
+  pcall(vim.api.nvim_del_augroup_by_name, 'smart-splits-backend-ghostty')
 end
 
 return M

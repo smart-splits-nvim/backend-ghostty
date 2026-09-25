@@ -6,7 +6,7 @@ describe('lifecycle', function()
 
   it('custom tables and failed release retries', function()
     local state = mock()
-    local lifecycle = require('ghostty-smart-splits.lifecycle')
+    local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
     local opts = { key_table = 'editor' }
     lifecycle.configure(opts)
     lifecycle.activate()
@@ -21,8 +21,8 @@ describe('lifecycle', function()
 
   it('active tables cannot be changed until released', function()
     local state = mock()
-    local lifecycle = require('ghostty-smart-splits.lifecycle')
-    local config = require('ghostty-smart-splits.config')
+    local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
+    local config = require('smart-splits-backend-ghostty.config')
     lifecycle.configure({ key_table = 'editor' })
     lifecycle.activate()
     h.wait_for_calls(state, 2)
@@ -33,7 +33,7 @@ describe('lifecycle', function()
       'Release the active key table before changing key_table',
       message:match('Release the active key table before changing key_table$')
     )
-    assert.are.equal('editor', config.key_table)
+    assert.are.equal('editor', config.options.key_table)
     assert.is_true(lifecycle.release_keys())
     lifecycle.configure({ key_table = 'other' })
     lifecycle.activate()
@@ -43,8 +43,8 @@ describe('lifecycle', function()
 
   it('a failed attachment recovers when Neovim regains focus', function()
     local state = mock()
-    local lifecycle = require('ghostty-smart-splits.lifecycle')
-    local ghostty = require('ghostty-smart-splits.ghostty')
+    local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
+    local ghostty = require('smart-splits-backend-ghostty.ghostty')
     state.id = ''
     assert.is_true(lifecycle.activate())
     h.wait_for_calls(state, 1)
@@ -66,7 +66,7 @@ describe('lifecycle', function()
 
   it('attachment stops retrying once the failures stop being transient', function()
     local state = mock()
-    local lifecycle = require('ghostty-smart-splits.lifecycle')
+    local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
     state.id = ''
     assert.is_true(lifecycle.activate())
     h.wait_for_calls(state, 1)
@@ -76,16 +76,16 @@ describe('lifecycle', function()
       h.settle()
     end
     assert.are.equal(5, #state.calls)
-    assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = 'GhosttySmartSplits' }))
+    assert.is_false(pcall(vim.api.nvim_get_autocmds, { group = 'smart-splits-backend-ghostty' }))
     assert.are.equal(
-      'ghostty-smart-splits: could not reach Ghostty; see :checkhealth ghostty-smart-splits',
+      '[smart-splits-backend-ghostty] could not reach Ghostty; see :checkhealth smart-splits-backend-ghostty',
       state.warnings[#state.warnings]
     )
   end)
 
   it('suspending before attachment completes does not claim keys', function()
     local state = mock()
-    local lifecycle = require('ghostty-smart-splits.lifecycle')
+    local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
     assert.is_true(lifecycle.activate())
     assert.are.equal(1, #state.calls) -- Lookup issued; its callback has not run yet.
 

@@ -1,39 +1,30 @@
--- smart-splits v3 interface; transport and lifecycle are shared with v2.
-local ghostty = require('ghostty-smart-splits.ghostty')
-local lifecycle = require('ghostty-smart-splits.lifecycle')
+---@module 'smart-splits.backend'
+
+local config = require('smart-splits-backend-ghostty.config')
+local ghostty = require('smart-splits-backend-ghostty.ghostty')
+local health = require('smart-splits-backend-ghostty.health')
+local lifecycle = require('smart-splits-backend-ghostty.lifecycle')
+local move = require('smart-splits-backend-ghostty.move')
+local resize = require('smart-splits-backend-ghostty.resize')
+
+---@type SmartSplitsBackend
 local M = {
-  name = 'ghostty',
+  name = 'smart-splits-backend-ghostty',
   protocol_version = '3.0.0',
+  -- Configuration is inert: only the selected backend may attach or claim keys.
+  ---@param opts? GhosttyBackend.PartialConfig
+  setup = function(opts)
+    lifecycle.configure(opts)
+  end,
+  detect = function()
+    return config.options.enable and ghostty.detect()
+  end,
+  move = move.move,
+  resize = resize.resize,
+  activate = lifecycle.activate,
+  health = health.report,
+  claim_keys = lifecycle.claim_keys,
+  release_keys = lifecycle.release_keys,
 }
-
--- Configuration is inert: only the selected backend may attach or claim keys.
----@param opts? GhosttySmartSplitsConfig
-function M.setup(opts)
-  lifecycle.configure(opts)
-end
-M.detect = ghostty.detect
-M.activate = lifecycle.activate
-
--- Core delegates `at_edge` here and only handles it inside Neovim's layout when
--- this returns false. Ghostty cannot wrap, so `wrap` is left to core; `split`
--- becomes a Ghostty split, falling back to a Neovim one when Ghostty refuses.
----@param opts? { at_edge?: 'stop'|'wrap'|'split' }
-function M.move(direction, opts)
-  if ghostty.move(direction) then
-    return true
-  end
-  if (opts or {}).at_edge == 'split' then
-    return ghostty.split(direction)
-  end
-  return false
-end
-
-function M.resize(direction, opts)
-  return ghostty.resize(direction, (opts or {}).amount)
-end
-
-function M.health()
-  require('ghostty-smart-splits.health').report()
-end
 
 return M
