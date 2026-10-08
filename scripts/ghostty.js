@@ -4,11 +4,10 @@
 // resolve for the application name.
 ObjC.import("AppKit");
 
-// A supported app: its name, and the four-character codes from its scripting
-// dictionary. cmux embeds Ghostty and mirrors Ghostty.sdef's object model
-// under its own codes.
+// A supported app: the four-character codes from its scripting dictionary.
+// cmux embeds Ghostty and mirrors Ghostty.sdef's object model under its own
+// codes.
 var GHOSTTY = {
-  name: "ghostty",
   codes: {
     suite: "Ghst",
     frontWindow: "GFWn",
@@ -19,7 +18,6 @@ var GHOSTTY = {
   },
 };
 var CMUX = {
-  name: "cmux",
   codes: {
     suite: "Cmux",
     frontWindow: "CMFW",
@@ -40,6 +38,24 @@ function appFor(bundleID) {
   )
     return CMUX;
   return undefined;
+}
+
+// cmux before 0.65.0 reports goto_split as performed even when no pane lies in
+// that direction (manaflow-ai/cmux#12370). Nightlies append "-nightly.N" to the
+// release they build on, so those between the fix and 0.65.0 are checked too:
+// one lookup slower, never wrong. So is a version that cannot be read.
+function cmuxNeedsMoveCheck(version) {
+  var parts = /^(\d+)\.(\d+)\./.exec(version || "");
+  return !parts || (Number(parts[1]) === 0 && Number(parts[2]) < 65);
+}
+
+// Read from disk: asking the app costs as much as the lookup it would save.
+function bundleVersion(running) {
+  return ObjC.unwrap(
+    $.NSBundle.bundleWithURL(running.bundleURL).objectForInfoDictionaryKey(
+      "CFBundleShortVersionString",
+    ),
+  );
 }
 
 var owner;
@@ -73,7 +89,13 @@ function owningTerminal() {
       ? undefined
       : ObjC.unwrap(running.bundleIdentifier);
     var app = appFor(bundleID);
-    if (app) return (owner = { pid: pid, bundleID: bundleID, app: app });
+    if (app)
+      return (owner = {
+        pid: pid,
+        bundleID: bundleID,
+        app: app,
+        checkMoves: app === CMUX && cmuxNeedsMoveCheck(bundleVersion(running)),
+      });
     pid = parents[pid];
   }
   throw Error("No owning Ghostty or cmux process found");
@@ -179,15 +201,10 @@ function performAction(terminalID, action) {
   var params = { "----": D.descriptorWithString(action) };
   params[codes.target] = terminal(codes.terminal, terminalID);
   var performed = !!send(host.pid, codes.suite, "PfAc", params).booleanValue;
-  // cmux reports goto_split as performed even when no pane lies in that
-  // direction, which would hide every edge from smart-splits. Only a focus
-  // change proves the move happened. Ghostty answers accurately, and the
-  // actions that do not move focus are left alone.
-  if (
-    performed &&
-    host.app.name === "cmux" &&
-    action.indexOf("goto_split:") === 0
-  )
+  // Older cmux would hide every edge from smart-splits, so there only a focus
+  // change proves the move happened. Ghostty and current cmux answer
+  // accurately, and the actions that do not move focus are left alone.
+  if (performed && host.checkMoves && action.indexOf("goto_split:") === 0)
     return focusedTerminalID() !== terminalID;
   return performed;
 }
