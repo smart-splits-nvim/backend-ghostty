@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/smart-splits-nvim/backend-ghostty/compare/v1.0.0...v1.0.1) (2026-10-08)
+
+
+### Performance Improvements
+
+* skip the cmux move check from cmux 0.65.0 ([#57](https://github.com/smart-splits-nvim/backend-ghostty/issues/57)) ([0ea13a1](https://github.com/smart-splits-nvim/backend-ghostty/commit/0ea13a1684cb2c838f5fa47f8ce251a1fca47c76)), closes [#45](https://github.com/smart-splits-nvim/backend-ghostty/issues/45)
+
 ## [1.0.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.8.0...v1.0.0) (2026-10-08)
 
 
