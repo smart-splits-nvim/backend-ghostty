@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.8.0...v1.0.0) (2026-10-08)
+
+
+### ⚠ BREAKING CHANGES
+
+* switch to smart-splits v3 ([#54](https://github.com/smart-splits-nvim/backend-ghostty/issues/54))
+
+### Features
+
+* switch to smart-splits v3 ([#54](https://github.com/smart-splits-nvim/backend-ghostty/issues/54)) ([dd05042](https://github.com/smart-splits-nvim/backend-ghostty/commit/dd05042f62dc2a3188a607e4e3a2f61feb09461d))
+
 ## [0.8.0](https://github.com/smart-splits-nvim/backend-ghostty/compare/v0.7.0...v0.8.0) (2026-09-11)
 
 
