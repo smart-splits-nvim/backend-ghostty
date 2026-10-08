@@ -37,6 +37,7 @@ All three are required.
 ```lua
 {
   'smart-splits-nvim/smart-splits.nvim',
+  version = '^3.0.0',
   lazy = false,
   opts = {
     mux = {
@@ -61,7 +62,10 @@ With `vim.pack` (Neovim 0.12+):
 
 ```lua
 vim.pack.add({
-  'https://github.com/smart-splits-nvim/smart-splits.nvim',
+  {
+    src = 'https://github.com/smart-splits-nvim/smart-splits.nvim',
+    version = vim.version.range('3'),
+  },
   'https://github.com/smart-splits-nvim/backend-ghostty',
 })
 
@@ -273,14 +277,15 @@ Run `just bench` from the Nix development shell to benchmark locally.
 
 smart-splits v2 has no backend protocol.
 Instead, `require('smart-splits-backend-ghostty.v2').setup()` registers the adapter v2 loads for `multiplexer_integration = 'ghostty'`, selects it, and activates the backend.
-Pin smart-splits to v2, since its default branch is v3.
+Pin smart-splits to `v2.1.1-final`, the last v2 release.
+lazy.nvim's `version = '^2'` resolves to v2.1.0 instead, because it treats the `-final` suffix as a prerelease.
 
 With lazy.nvim:
 
 ```lua
 {
   'smart-splits-nvim/smart-splits.nvim',
-  version = '^2',
+  tag = 'v2.1.1-final',
   lazy = false,
   dependencies = { 'smart-splits-nvim/backend-ghostty' },
   config = function()
@@ -296,7 +301,7 @@ With `vim.pack` (Neovim 0.12+):
 vim.pack.add({
   {
     src = 'https://github.com/smart-splits-nvim/smart-splits.nvim',
-    version = vim.version.range('2'),
+    version = 'v2.1.1-final',
   },
   'https://github.com/smart-splits-nvim/backend-ghostty',
 })

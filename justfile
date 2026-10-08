@@ -1,6 +1,6 @@
 # Smart-splits revisions to test against
-SMART_SPLITS_V2_REV := "v2.1.0"
-SMART_SPLITS_V3_REV := "v3"
+SMART_SPLITS_V2_REV := "v2.1.1-final"
+SMART_SPLITS_V3_REV := "v3.0.0"
 
 # Description on the vimdoc title line. panvimdoc tags only the file name,
 # backend-ghostty.txt, so the leading tag gives `:help backend-ghostty` an exact
@@ -29,7 +29,8 @@ deps-v3:
     set -euo pipefail
     dir="${SMART_SPLITS_V3_DIR:-deps/smart-splits-v3.nvim}"
     rev="${SMART_SPLITS_V3_REF:-{{SMART_SPLITS_V3_REV}}}"
-    if [ -d "$dir/.git" ] && [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$(git -C "$dir" rev-parse "$rev" 2>/dev/null)" ]; then
+    # ^{commit} peels annotated tags, which would otherwise never match HEAD.
+    if [ -d "$dir/.git" ] && [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$(git -C "$dir" rev-parse --verify --quiet "$rev^{commit}")" ]; then
       exit 0
     fi
     rm -rf "$dir"
