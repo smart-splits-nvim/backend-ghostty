@@ -253,8 +253,8 @@ Window fullscreen also allows navigation between Neovim windows and Ghostty pane
 [cmux](https://cmux.com) embeds Ghostty and works in its place.
 It reads the same Ghostty config file, so the [Ghostty configuration](#ghostty-configuration) applies unchanged; run `cmux reload-config` after editing it.
 
-cmux reports `goto_split` as performed even when no pane lies in that direction, so a move is called successful only once focus has actually left the Neovim pane.
-That costs one extra pane lookup per move in cmux; Ghostty answers accurately and skips it.
+cmux before 0.65.0 reports `goto_split` as performed even when no pane lies in that direction, so there a move is called successful only once focus has actually left the Neovim pane.
+That costs one extra pane lookup per move; cmux 0.65.0 and later, like Ghostty, answer accurately and skip it.
 
 ## Persistent transport
 
