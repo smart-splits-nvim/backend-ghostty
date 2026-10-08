@@ -1,6 +1,12 @@
+local config = require('smart-splits-backend-ghostty.config')
+local transport = require('smart-splits-backend-ghostty.transport')
+
 local M = {}
 
 function M.report()
+  if not config.options.enable then
+    vim.health.warn('Backend is disabled by configuration')
+  end
   if vim.fn.has('nvim-0.11') == 1 then
     vim.health.ok('Neovim >= 0.11')
   else
@@ -16,9 +22,9 @@ function M.report()
   else
     vim.health.warn('osascript is unavailable')
   end
-  if require('ghostty-smart-splits.config').transport == 'ephemeral' then
+  if config.options.transport == 'ephemeral' then
     vim.health.info("transport = 'ephemeral': each request starts osascript")
-  elseif require('ghostty-smart-splits.transport').status().running then
+  elseif transport.status().running then
     vim.health.ok("transport = 'persistent': osascript process is running")
   else
     vim.health.info("transport = 'persistent': starts on the next attachment or action")

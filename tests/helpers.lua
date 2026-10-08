@@ -18,10 +18,10 @@ end
 
 -- Reset the state used by failure-path tests between cases.
 local OWN_MODULES = {
-  'ghostty-smart-splits.config',
-  'ghostty-smart-splits.ghostty',
-  'ghostty-smart-splits.lifecycle',
-  'ghostty-smart-splits.transport',
+  'smart-splits-backend-ghostty.config',
+  'smart-splits-backend-ghostty.ghostty',
+  'smart-splits-backend-ghostty.lifecycle',
+  'smart-splits-backend-ghostty.transport',
 }
 local ENV_KEYS = { 'TERM_PROGRAM', 'SSH_CONNECTION', 'TMUX', 'ZELLIJ', 'CMUX_SURFACE_ID' }
 
@@ -37,7 +37,7 @@ function M.mock()
   reset_plugin()
   -- Most specs assert the osascript launches, so they run on the ephemeral
   -- transport. Specs for the persistent transport opt in with setup().
-  require('ghostty-smart-splits.config').setup({ transport = 'ephemeral' })
+  require('smart-splits-backend-ghostty.config').setup({ transport = 'ephemeral' })
   local state = {
     calls = {},
     warnings = {},

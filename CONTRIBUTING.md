@@ -25,7 +25,7 @@ example: `BUSTED_ARGS='--filter=transport' just test`.
 ## Documentation
 
 `README.md` is the only place documentation is written. `just docs` regenerates
-`doc/ghostty-smart-splits.txt` from it with
+`doc/backend-ghostty.txt` from it with
 [panvimdoc](https://github.com/kdheepak/panvimdoc) and rebuilds `doc/tags`.
 Both generated files are committed; run `just docs` and include the result in
 any commit that touches the README. CI runs `just docs-check`, which fails when

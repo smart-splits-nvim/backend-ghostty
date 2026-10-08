@@ -8,8 +8,8 @@
 --   3. `osascript`/`osascript_async`, which start that one-shot process.
 -- Only the startup terminal lookup in `attach` is asynchronous.
 local M = {}
-local config = require('ghostty-smart-splits.config')
-local transport = require('ghostty-smart-splits.transport')
+local config = require('smart-splits-backend-ghostty.config')
+local transport = require('smart-splits-backend-ghostty.transport')
 local script_dir = vim.fn.fnamemodify(debug.getinfo(1, 'S').source:sub(2), ':p:h:h:h') .. '/scripts/'
 local terminal_id
 local attaching = false
@@ -28,7 +28,7 @@ local function report_error(result)
   local message = vim.trim(result.stderr or '')
   vim.schedule(function()
     vim.notify_once(
-      'ghostty-smart-splits: ' .. (message ~= '' and message or 'AppleScript failed'),
+      '[smart-splits-backend-ghostty] ' .. (message ~= '' and message or 'AppleScript failed'),
       vim.log.levels.WARN
     )
   end)
@@ -84,7 +84,7 @@ end
 -- it cannot answer. A persistent process that reports an AppleScript failure
 -- fails closed rather than retrying.
 local function dispatch(request, script, ...)
-  if config.transport == 'persistent' then
+  if config.options.transport == 'persistent' then
     local result, handled = transport.request(request)
     if handled then
       return type(result) == 'string' and result or nil
@@ -120,7 +120,7 @@ function M.attach(callback)
     attaching = false
     if id and id ~= '' then
       terminal_id = id
-      if config.transport == 'persistent' then
+      if config.options.transport == 'persistent' then
         transport.start()
       end
     end

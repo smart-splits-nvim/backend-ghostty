@@ -108,7 +108,7 @@ function M.request(request)
   end
   if response.ok ~= true then
     vim.schedule(function()
-      vim.notify_once('ghostty-smart-splits: ' .. (response.error or 'request failed'), vim.log.levels.WARN)
+      vim.notify_once('[smart-splits-backend-ghostty] ' .. (response.error or 'request failed'), vim.log.levels.WARN)
     end)
     return false, true
   end

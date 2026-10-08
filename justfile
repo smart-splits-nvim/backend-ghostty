@@ -1,9 +1,12 @@
 # Smart-splits revisions to test against
-SMART_SPLITS_V2_REV := "master"
-SMART_SPLITS_V3_REV := "v3"
+SMART_SPLITS_V2_REV := "v2.1.1-final"
+SMART_SPLITS_V3_REV := "v3.0.0"
 
-# Description on the vimdoc title line.
-DOC_DESCRIPTION := "Neovim-first Ghostty navigation on macOS"
+# Description on the vimdoc title line. panvimdoc tags only the file name,
+# backend-ghostty.txt, so the leading tag gives `:help backend-ghostty` an exact
+# match on line 1; without it, Neovim picks the first partial match instead.
+# Keep the whole line within 78 columns.
+DOC_DESCRIPTION := "*backend-ghostty*  Neovim-first Ghostty navigation"
 
 # Clone smart-splits v2 (no-op if already present)
 [private]
@@ -26,7 +29,8 @@ deps-v3:
     set -euo pipefail
     dir="${SMART_SPLITS_V3_DIR:-deps/smart-splits-v3.nvim}"
     rev="${SMART_SPLITS_V3_REF:-{{SMART_SPLITS_V3_REV}}}"
-    if [ -d "$dir/.git" ] && [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$(git -C "$dir" rev-parse "$rev" 2>/dev/null)" ]; then
+    # ^{commit} peels annotated tags, which would otherwise never match HEAD.
+    if [ -d "$dir/.git" ] && [ "$(git -C "$dir" rev-parse HEAD 2>/dev/null)" = "$(git -C "$dir" rev-parse --verify --quiet "$rev^{commit}")" ]; then
       exit 0
     fi
     rm -rf "$dir"
@@ -46,7 +50,7 @@ test: test-core
 
 test-core: deps-v3
     SMART_SPLITS_DIR="$(cd "${SMART_SPLITS_V3_DIR:-deps/smart-splits-v3.nvim}" && pwd)" \
-      XDG_STATE_HOME="${TEST_STATE_HOME:-/tmp/ghostty-smart-splits.nvim}" \
+      XDG_STATE_HOME="${TEST_STATE_HOME:-/tmp/smart-splits-backend-ghostty.nvim}" \
       busted --run=core ${BUSTED_ARGS:-} < /dev/null
 
 # Run real Ghostty workflows in a dedicated instance (macOS only)
@@ -75,7 +79,7 @@ gen-docs dest:
     # GITHUB_ACTIONS=true makes it look for its Lua filters in /scripts, which
     # only exists inside its own Docker action; unset it so it finds its own.
     if ! out="$(GITHUB_ACTIONS=false panvimdoc \
-      --project-name ghostty-smart-splits \
+      --project-name backend-ghostty \
       --input-file README.md \
       --description "{{DOC_DESCRIPTION}}" \
       --no-date true \
